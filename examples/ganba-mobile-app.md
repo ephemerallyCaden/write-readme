@@ -2,7 +2,7 @@
 
   Detected: Mobile App (Flutter, pubspec.yaml + android/ + ios/)
   Solo project: yes (1 contributor, 0 stars)
-  Existing screenshots: yes — test/goldens/ contains 30 golden test renders
+  Existing screenshots: yes — ganba-screens/ contains 30 golden test renders
 
   > The app display name is "Ganba!" but the package name is
   > "projecting_not_sending". Which should the README use as the title?
@@ -15,7 +15,7 @@
     License:       [Skip]
     Contributing:  [Skip — solo project]
     Verbosity:     [Standard]
-    Screenshots:   [Use existing — test/goldens/ has rendered screens]
+    Screenshots:   [Use existing — ganba-screens/ has rendered screens]
 
 -->
 
@@ -29,11 +29,11 @@
 A personal climbing training tracker for periodized training, rehab, and benchmarks. Offline-first — all data stored locally in SQLite, no account or network required.
 
 <p align="center">
-  <img src="test/goldens/dashboard_bento_dark.png" alt="Ganba dashboard showing streak, weekly schedule, pain areas, and benchmark retests" width="220">
+  <img src="ganba-screens/dashboard_bento_dark.png" alt="Ganba dashboard showing streak, weekly schedule, pain areas, and benchmark retests" width="220">
   &nbsp;&nbsp;
-  <img src="test/goldens/session_poster_dark.png" alt="Session summary with climb recap chart, trophy climbs, and style breakdown" width="220">
+  <img src="ganba-screens/session_poster_dark.png" alt="Session summary with climb recap chart, trophy climbs, and style breakdown" width="220">
   &nbsp;&nbsp;
-  <img src="test/goldens/goals_screen_dark.png" alt="Goals screen tracking weighted pull progress and hangboard benchmarks" width="220">
+  <img src="ganba-screens/goals_screen_dark.png" alt="Goals screen tracking weighted pull progress and hangboard benchmarks" width="220">
 </p>
 
 ## Getting Started
@@ -65,19 +65,19 @@ flutter run
 <summary>More screenshots</summary>
 
 <p align="center">
-  <img src="test/goldens/plan_canvas_light.png" alt="Training plan canvas showing weekly schedule with session types" width="220">
+  <img src="ganba-screens/plan_canvas_light.png" alt="Training plan canvas showing weekly schedule with session types" width="220">
   &nbsp;&nbsp;
-  <img src="test/goldens/stats_k_dark.png" alt="Progress stats screen with grade charts, session history, and personal records" width="220">
+  <img src="ganba-screens/stats_k_dark.png" alt="Progress stats screen with grade charts, session history, and personal records" width="220">
   &nbsp;&nbsp;
-  <img src="test/goldens/streak_sheet_dark.png" alt="Streak tracking sheet" width="220">
+  <img src="ganba-screens/streak_sheet_dark.png" alt="Streak tracking sheet" width="220">
 </p>
 
 <p align="center">
-  <img src="test/goldens/calendar_mock_dark.png" alt="Calendar view showing session history" width="220">
+  <img src="ganba-screens/calendar_mock_dark.png" alt="Calendar view showing session history" width="220">
   &nbsp;&nbsp;
-  <img src="test/goldens/settings_screen_dark.png" alt="Settings screen" width="220">
+  <img src="ganba-screens/settings_screen_dark.png" alt="Settings screen" width="220">
   &nbsp;&nbsp;
-  <img src="test/goldens/blocks_list_dark.png" alt="Training blocks list view" width="220">
+  <img src="ganba-screens/blocks_list_dark.png" alt="Training blocks list view" width="220">
 </p>
 
 </details>
