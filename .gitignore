@@ -1,0 +1,25 @@
+# Internal design docs — not published
+docs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Generated artifacts
+assets/screenshots/
+*.gif
+*.png
+!data/**
