@@ -1,5 +1,5 @@
 ---
-name: write-readme
+name: readme
 description: Generate polished, project-type-aware READMEs from codebase analysis. Use when asked to "generate a readme", "write a readme", "create a readme", or "/readme". Supports minimal/standard/detailed verbosity, 18 project types, anti-AI-slop writing rules, and optional screenshot capture.
 ---
 
