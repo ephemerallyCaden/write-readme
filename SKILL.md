@@ -206,15 +206,30 @@ Follow the template ordering exactly. Apply all anti-AI writing rules during gen
 
 ### 3d. Visual assets
 
-Step 1 -- Check for existing images:
+Step 1 -- Search the ENTIRE project for images. Do not hardcode directories:
+```bash
+find . -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.gif" -o -name "*.svg" -o -name "*.webp" \) \
+  -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/build/*" \
+  -not -path "*/.dart_tool/*" -not -path "*/dist/*" -not -path "*/target/*" \
+  -not -path "*/__pycache__/*" -not -path "*/.venv/*"
 ```
-Glob: assets/*.{png,gif,svg,jpg,webp}, images/*.{png,gif,svg,jpg,webp}, screenshots/*.{png,gif,svg,jpg,webp}, docs/images/*.{png,gif,svg,jpg,webp}, .github/*.{png,gif,svg,jpg,webp}, img/*.{png,gif,svg,jpg,webp}, media/*.{png,gif,svg,jpg,webp}, static/*.{png,gif,svg,jpg,webp}, public/*.{png,gif,svg,jpg,webp}
-```
-Also check existing README for image references.
+This catches images anywhere: test/goldens/ (Flutter golden tests), docs/design/, assets/, or wherever else they exist. Also check existing README for external image references.
 
-Step 2 -- Branch:
-- **Existing assets found**: Use them. Reference at correct template positions. Read each image to write accurate alt text. If uncovered MUST positions remain, treat as "no assets."
-- **No assets + template says MUST**: Ask the user: "(a) Auto-capture now, (b) Skip -- I'll leave placeholders, (c) Point me to files." If (a), delegate to screenshot sub-skill at skills/screenshot/SKILL.md. If (b), insert descriptive placeholders. If (c), user provides paths.
+Step 2 -- Look at each found image and decide if it belongs in a README. Not every image file is a screenshot. Read the image and judge:
+- **App screen / UI render** (dashboard, settings, feature view) → use it
+- **Diagram** (architecture, flowchart, pipeline) → use it
+- **Terminal output** (CLI help, command demo) → use it
+- **Logo** → use only in the title area, not as a screenshot
+- **Icon / sprite / texture / favicon** → skip, internal asset
+- **Diff image / coverage badge / test failure** → skip, test artifact
+- **Design mockup** → use if it represents the actual app, skip if it's a wireframe draft
+
+Only reference images that would help a reader understand what the project does or looks like. When in doubt, skip it.
+
+Step 3 -- Branch:
+- **Usable screenshots found**: Use them. Reference at correct template positions. Read each image to write accurate alt text. If some MUST positions are still uncovered, treat those as "no assets."
+- **Only internal assets found (no screenshots)**: Treat as "no assets."
+- **No assets + template says MUST**: Ask the user: "(a) Auto-capture now, (b) Skip -- I'll leave placeholders, (c) I have images -- let me point you to them." If (a), delegate to screenshot sub-skill at skills/screenshot/SKILL.md. If (b), insert descriptive placeholders. If (c), user provides paths.
 - **No assets + template says SHOULD/COULD**: Skip silently. Insert placeholders without asking.
 
 ### 3e. TOC
