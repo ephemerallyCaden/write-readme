@@ -21,5 +21,4 @@ Thumbs.db
 # Generated artifacts
 assets/screenshots/
 *.gif
-*.png
-!data/**
+!assets/banner.png
