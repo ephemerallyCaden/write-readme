@@ -18,7 +18,7 @@ Trigger phrases: "generate a readme", "write a readme", "create a readme", "/rea
 Options (natural language or flags):
 - `/readme` -- standard verbosity, auto-detected type
 - `/readme minimal` or "write a short readme" -- essentials only
-- `/readme detailed` or "write a polished readme" -- all sections, comprehensive
+- `/readme detailed` or "write a polished readme" -- every section the type supports
 - `/readme --type cli` -- override auto-detected project type
 - `/readme architecture` or "write an ARCHITECTURE.md" -- write only the ARCHITECTURE.md companion file. Follow `references/architecture-mode.md`.
 - `/readme critique [path]` or "critique/review/audit/improve my readme" -- audit an existing README (default `./README.md`) against these same rules and scripts. Reports P0-P2 findings with exact fixes, then applies the ones you pick. Follow `references/critique-mode.md` (relative to this skill's base directory). If no README exists, offer generate mode.
