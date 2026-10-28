@@ -64,6 +64,20 @@ class TocTests(unittest.TestCase):
         content = "---\nname: x\ndescription: y\n---\n\n# T\n\nIntro\n---\n\n## Real\n"
         self.assertEqual(toc_for(content), ["- [Intro](#intro)", "- [Real](#real)"])
 
+    def test_cli_output_is_bold_label_not_heading(self):
+        result = subprocess.run([sys.executable, script_path("generate-toc.py")],
+                                input="# T\n\n## Install\n\n### From source\n\n## Usage\n",
+                                capture_output=True, text=True, check=True)
+        self.assertEqual(result.stdout, "**Contents**\n\n- [Install](#install)\n- [Usage](#usage)\n")
+        self.assertEqual([h for h in _mdlib.collect_headings(_mdlib.parse_lines(result.stdout))], [])
+
+    def test_cli_h3_option(self):
+        result = subprocess.run([sys.executable, script_path("generate-toc.py"), "--h3"],
+                                input="# T\n\n## Install\n\n### From source\n",
+                                capture_output=True, text=True, check=True)
+        self.assertEqual(result.stdout.splitlines()[2:],
+                         ["- [Install](#install)", "  - [From source](#from-source)"])
+
     def test_generated_toc_passes_anchor_check(self):
         body = "## Build & Test\n\n## Usage\n\n### Usage\n\n## Usage\n\n## __init__ and snake_case\n"
         result = subprocess.run([sys.executable, script_path("generate-toc.py"), "--h3"],

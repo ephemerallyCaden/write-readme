@@ -2,7 +2,9 @@
 """Generate a table of contents from a markdown file's headings.
 
 Reads a markdown file, extracts H2 (and optionally H3) headings, and prints
-a GitHub-compatible TOC to stdout. Anchors follow GitHub: lowercase, punctuation
+a GitHub-compatible TOC to stdout: a bold `**Contents**` label, a blank line,
+then the list. The label is not a heading, so the TOC never becomes the first
+H2 section. Anchors follow GitHub: lowercase, punctuation
 stripped, each space a hyphen, -1/-2 suffixes for duplicate headings.
 
 Includes H3s only if there are more than 10 H2 headings.
@@ -13,6 +15,9 @@ import argparse
 import sys
 
 from _mdlib import collect_headings, parse_lines, unique_slugs
+
+
+TOC_LABEL = "**Contents**"
 
 
 def extract_headings(content: str) -> list[tuple[int, str, str]]:
@@ -89,7 +94,7 @@ def main() -> None:
         print("<!-- No H2 headings found — TOC not generated -->", file=sys.stderr)
         sys.exit(0)
 
-    print("## Table of Contents")
+    print(TOC_LABEL)
     print()
     for line in toc_lines:
         print(line)
