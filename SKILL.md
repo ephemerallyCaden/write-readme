@@ -288,26 +288,18 @@ Exempt: Educational / Awesome lists, personal config / dotfiles repos (a browse 
 
 **ARCHITECTURE.md.** Only when chosen in Phase 2b or asked for directly. Follow `references/architecture-mode.md` (relative to this skill's base directory) after the README draft passes Phase 4, and link the file from Contributing, or from Docs when there is no Contributing section.
 
-Apply all anti-AI writing rules during generation (see section below), not only as a post-pass. The full catalog with replacements and register notes is in `references/anti-ai-rules.md` (relative to this skill's base directory). Read it before writing prose.
+Before writing prose, read `references/anti-ai-rules.md` (relative to this skill's base directory), and apply the Anti-AI Writing Rules section below while writing, not only as a post-pass.
 
 ### 3c. Generate badges
 
-```
-1. Parse owner/repo from: git remote get-url origin
-2. Detect registry:
-   package.json -> npm | pyproject.toml/setup.py -> PyPI | Cargo.toml -> crates.io
-   go.mod -> Go | Gemfile/gemspec -> RubyGems | pubspec.yaml -> pub.dev
-   composer.json -> Packagist | pom.xml/build.gradle -> Maven Central
-   mix.exs -> Hex.pm | *.cabal -> Hackage
-   No match -> GitHub-only badges
-3. Select 0-6 badges (ordered, flat style). Zero is fine; skip any badge without real data behind it:
-   a. License: ![License](https://img.shields.io/github/license/{owner}/{repo})
-   b. CI (if .github/workflows/ exists): ![CI](https://img.shields.io/github/actions/workflow/status/{owner}/{repo}/{workflow_file})
-   c. Version (if published): registry-specific shield URL
-   d. Downloads (if published): registry-specific shield URL
-   e. Community (if Discord/Slack link found): appropriate badge
-4. No git remote or private repo -> skip all shields.io badges
-```
+1. Parse owner/repo from `git remote get-url origin` (`github.com/{owner}/{repo}`). No git remote, or a private repo: skip all shields.io badges.
+2. Detect the registry and take the package name from the manifest: package.json -> `npm` | pyproject.toml/setup.py -> `pypi` | Cargo.toml -> `crates.io` | go.mod -> `go` | Gemfile/gemspec -> `rubygems` | pubspec.yaml -> `pub.dev` | composer.json -> `packagist` | pom.xml/build.gradle -> `maven` | mix.exs -> `hex.pm` | *.cabal -> `hackage` | no match -> GitHub-only badges.
+3. Generate the row (flat style, in the order License, CI, Version, Downloads):
+   ```bash
+   python3 <skill-dir>/scripts/generate-badges.py --owner <owner> --repo <repo> --license <SPDX id> --ci-workflow <file> --ecosystem <registry> --package <name>
+   ```
+   Pass a flag only with real data behind it: `--license` only with a LICENSE file, `--ci-workflow` only for a file that exists in `.github/workflows/`, and `--ecosystem` with `--package` only when the package is published (they add the Version and Downloads badges).
+4. Add a Community badge by hand only when a Discord or Slack link exists. Keep 0-6 badges in total; zero is fine.
 
 Never generate a static badge that imitates live status (`build-passing`, `maintained-yes`, `docs-available`). Static badges are only for facts that don't change with the build, such as language, framework, or platform. In detailed mode, keep at most one CI badge in the header and move per-workflow CI badges into a "Project status" table near the end.
 
@@ -445,91 +437,27 @@ If an existing README was replaced, note that the old version can be recovered v
 
 ## Anti-AI Writing Rules
 
-These rules are constraints applied DURING generation; Phase 4 then checks the draft again. Internalize them before writing any prose.
+These rules apply during generation; Phase 4 checks the draft again. `references/anti-ai-rules.md` holds the rest: a replacement for each banned word, the P0/P1/P2 checklist that matches `scripts/check-anti-ai.py` (items marked "(scripted)" are the ones it catches; P0 and P1 both block), the full text of rules 12 and 13, the voice register, and portability examples. P0-P2 in generate mode are the checker's levels.
 
 ### Banned words (never use)
 
 delve, robust, comprehensive, leverage, seamless, cutting-edge, empower, streamline, harness, elevate, embark, pivotal, meticulous, showcase, beacon, tapestry, landscape (as metaphor), deep dive, unpack, holistic, actionable, best practices, utilize, facilitate, foster, game-changer, paradigm, realm, testament to, ever-evolving
 
-### Replacement table
-
-| Temptation | Write instead |
-|------------|---------------|
-| robust | reliable, solid |
-| comprehensive | full, complete |
-| leverage | use |
-| seamless | smooth, easy |
-| cutting-edge | latest |
-| streamline | simplify |
-| empower | let, enable |
-| utilize | use |
-| facilitate | enable, help |
-| foster | build, support |
-| in order to | to |
-| serves as | is |
-| it's worth noting | (cut -- just state the fact) |
-| ecosystem (in prose) | system, community, network |
-
 ### 13 structural rules
 
-1. No emoji in headings. Only exception: emoji directly next to a proper noun brand/mascot.
-2. No throat-clearing. Never open a section by explaining what it covers. The heading does that. Jump to content.
-3. No transition phrases. No "Moreover", "Furthermore", "Additionally" between sections.
-4. No "Let's" anything. Imperative mood: "Install", "Configure", "Run."
-5. One term, used consistently. No synonym cycling ("the tool", "the utility", "the application", "the solution").
+1. No emoji in headings, except directly next to a proper noun brand or mascot.
+2. No throat-clearing: never open a section by explaining what it covers. Jump to content.
+3. No transition phrases ("Moreover", "Furthermore", "Additionally").
+4. No "Let's" anything. Use the imperative: "Install", "Configure", "Run."
+5. One term, used consistently. No synonym cycling ("the tool", "the utility", "the solution").
 6. Code blocks before prose. Show, then explain.
 7. No empty praise. "A Python linter written in Rust" beats "An amazing groundbreaking linter."
-8. Sentence variety. Mix short and long. No uniform paragraph lengths.
-9. No "In today's world of..." -- ever. No temporal scene-setting.
-10. End on concrete points, not summaries. No "Overall, this tool provides..." endings.
-11. Every prose sentence must pass the portability test (see below).
-12. Feature lists: no bold labels, no em dashes. Write plain bullets that start with the feature name followed by a colon or just flow into the description naturally. Do not repeat the same `**Name** -- description` pattern on every line. This applies to lists of features, capabilities, and benefits. Reference lists may lead with the name in backticks or bold, because the name is what the reader scans for. A list is a reference list when an item's label is inline code or a file/path token (`` `--verbose` ``, `train.py`, `src/app`), or when the list sits under a heading that contains structure, file(s), layout, config, configuration, option(s), flag(s), api, reference, language(s), or environment, including that heading's subheadings. A heading that also says "feature" ("Configuration features") is still checked. The checker flags a list once 3 or more of its items carry a bold label that is not exempt. Em dashes are flagged in every list item, reference lists included; use `--` or a colon.
-13. Earned emphasis only. Bold a keyword only when it helps scanning: at most one inline bold per bullet, never at the start of a feature bullet (rule 12). Never bold for drama, and never bold whole sentences.
-
-### Voice register
-
-- Description: third person ("Flask is a lightweight framework")
-- Instructions: imperative ("Install with pip", not "You can install with pip")
-- Contributing: first person plural ("We welcome contributions")
-- Tone: quietly confident. Declarative. No hedging on features that work. No superlatives unless backed by benchmarks.
-
-### The portability test
-
-If a sentence could appear in another project's README unchanged, it is filler. Replace it with a fact specific to THIS project.
-
-Fails: "A powerful tool for modern developers." "Easy to get started." "Built with performance in mind."
-Passes: "Compiles 100K lines of Python in under 200ms." "Mirror your Android screen at 30-120fps." "Manage your zsh configuration with 300+ plugins."
-
-### Severity levels
-
-These match `scripts/check-anti-ai.py`. P0 and P1 both block publishing (the Phase 4 gate is `--severity P1`); the split says which kind of failure it is. Items marked (scripted) are caught by the checker; the rest need self-review.
-
-**P0 -- banned words (must fix)**
-- No word from the banned list above (scripted, except "landscape", which is banned only as a metaphor)
-
-**P1 -- chatbot and template phrasing (must fix)**
-- No chatbot artifacts ("Feel free to...", "I hope this helps", "Don't hesitate to", "Please note that") (scripted)
-- No template phrases ("in order to", "serves as a", "a wide range of", "a [adjective] step towards [adjective] [noun]") (scripted)
-- No "Let's" openers (scripted)
-- No emoji in headings (scripted)
-- No bold-label or em-dash feature lists, rule 12 (scripted)
-- No cutoff disclaimers ("As of my last update")
-- No vague attributions ("Experts believe", "Studies show")
-- No significance inflation on routine features
-- No reasoning chain artifacts ("Let me break this down")
-- No synonym cycling within the same section
-- No formulaic openings ("In the rapidly evolving world of...")
-- No "Whether you're X or Y" false-breadth
-- No hedge-stacked predictions ("could potentially", "may eventually")
-- No performed or narrated candor ("Let's be honest", "In the interest of transparency")
-- No fake enthusiasm ("We're excited to...", "We're thrilled to...")
-- No rhetorical questions in descriptions or prose. Questions are fine as FAQ entries and router lines ("Looking for the command-line tool? See ...").
-
-**P2 -- polish (fix, or list under Warnings)**
-- Section preambles ("This section covers...") (scripted). Rule 2 bans them, so fix these rather than listing them.
-- Transition words opening a line: Moreover, Furthermore, Additionally (scripted)
-- More than 2 em dashes in prose (scripted)
-- Compulsive rule of three, uniform paragraph lengths, generic conclusions ("The future looks bright")
+8. Sentence variety. Mix short and long; no uniform paragraph lengths.
+9. No temporal scene-setting ("In today's world of...").
+10. End on concrete points, not summaries ("Overall, this tool provides...").
+11. Portability test: a sentence that could appear unchanged in another project's README is filler. Replace it with a fact about this one.
+12. Feature lists: no bold labels, no em dashes. Reference lists (code or path labels, or lists under a structure, config, options, API, or similar heading) may lead with a bold or code name; the exact test is in `references/anti-ai-rules.md`.
+13. Earned emphasis only: at most one inline bold per bullet, never at the start of a feature bullet, never for drama or whole sentences.
 
 ## Enhance Mode
 
@@ -595,14 +523,6 @@ Add one line, or a short subsection under Docs or Contributing, linking them and
 3. If none: read main entry point. Synthesize minimal usage from public exports.
 4. Validate: Grep the codebase for every function/class name used in the example. Confirm each exists.
 5. If no viable example: insert `<!-- TODO: Add usage example -->` rather than a broken one.
-
-## Badge Generation
-
-1. Extract owner/repo: `git remote get-url origin` then parse `github.com/{owner}/{repo}`
-2. Detect registry from manifest type (see Phase 3c mapping)
-3. Extract package name from manifest
-4. Select 0-6 badges (ordered, flat style): License, CI, Version, Downloads, Community. No static badges that imitate live status (Phase 3c)
-5. No git remote or private repo: skip shields.io badges entirely
 
 ## Length Targets
 

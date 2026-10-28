@@ -1,6 +1,6 @@
 # Anti-AI Writing Rules -- Complete Reference
 
-> This document contains the full catalog of anti-AI writing rules for README generation. The SKILL.md has rules inline; this file provides the complete detail for anyone who needs the exhaustive list.
+> The full catalog of anti-AI writing rules for README generation. SKILL.md keeps only the banned-word list and the 13 rules in one line each; the replacements, the severity checklist, and the full rule text live here. Read this before writing prose.
 >
 > Severity levels match `scripts/check-anti-ai.py`: P0 is banned words, P1 is chatbot and template phrasing, P2 is polish. P0 and P1 both block publishing.
 
@@ -128,7 +128,7 @@ READMEs operate in a `docs` register, not `blog` or `linkedin`. This relaxes som
 
 **Use with care (docs profile relaxes these):**
 - Em dashes: 0-2 per README max. Never use em dashes in feature lists. Use a colon or just start the sentence after the feature name.
-- Bold keywords in feature lists: do NOT bold the feature name. Plain text bullets read more naturally. If a feature list has 5+ items, every line being bold creates a wall of emphasis that scans as AI-generated. Reference lists (code or path labels, or lists under a structure, files, config, options, API, or similar heading) may lead with the name in backticks or bold (rule 12).
+- Bold keywords in feature lists: do NOT bold the feature name. Plain text bullets read more naturally. If 3 or more items in a feature list carry a bold label (the point where the checker flags it, rule 12), the bold creates a wall of emphasis that scans as AI-generated. Reference lists (code or path labels, or lists under a structure, files, config, options, API, or similar heading) may lead with the name in backticks or bold (rule 12).
 - Hedging with "may" (acceptable for genuine technical uncertainty)
 
 **Always strict (docs profile keeps these):**
