@@ -22,4 +22,5 @@ Thumbs.db
 assets/screenshots/
 *.gif
 !assets/*.gif
+!examples/tinysim/media/*.gif
 !assets/banner.png
