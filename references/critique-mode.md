@@ -58,6 +58,9 @@ Check every item. Verify claims against the codebase with Read, Glob, and Grep; 
 - Runtime and version claims match the manifest (`engines`, `requires-python`, `rust-version`, SDK constraints).
 - Env vars and config keys the README names exist in code.
 - A feature bullet is a P0 false claim only after a Grep for its key terms finds nothing.
+- Limitation claims ("not supported on Windows", "Python 3.12 only") match the Phase 1k evidence. A claim the evidence contradicts (CI runs `windows-latest`, `requires-python` allows 3.13) is P0. A claim with no evidence either way goes in Unverified. An uncited limitation whose evidence exists is fine; adding the citation is P2.
+- Comparisons: every claim about another project names it and links a source, per the Comparison rule in Phase 3b. An unsourced claim about a named alternative is P1; the fix links a source found in `docs/` or the existing README, else adds `<!-- TODO: source for this claim -->`, or deletes the claim `[human]`. A comparison against unnamed "other tools" or "traditional approaches" is P1 (fix: name the alternative from a source, or cut). A comparison with no dimension where this project loses or doesn't apply is P2.
+- Privacy section: every destination and opt-out it names exists in code. An opt-out env var, flag, or config key the code never reads is P0.
 
 **Getting started**
 - The Run-first rule in Phase 3b holds, including its stated exceptions.
@@ -66,6 +69,8 @@ Check every item. Verify claims against the codebase with Read, Glob, and Grep; 
 - An expected-result line follows the run command: the URL and port for servers (from config or defaults), `--help` / `--version` for CLIs, the generated files for generators. Missing is P2; the fix uses only codebase facts.
 - Post-install steps the code requires (env vars read at startup, migrations, a config file that must exist) are documented. Missing is P1.
 - The primary install path is not collapsed inside `<details>`.
+- Research write-up (Phase 1g): Results before the run section is allowed. A README with no runnable command that reproduces a result is P1.
+- Hardware: a hazard the BOM, schematic, or code shows (mains voltage, lithium cells, motor current, logic-level mismatch) with no `> [!WARNING]` at the step where it arises is P1. The fix names the hazard and its evidence.
 - If install sits below an H2 about security, compatibility, requirements, or a threat model, do not propose moving it above that section. Report it as P2 with the reason, and offer the move only as an option the user picks by id.
 
 **Structure**
@@ -74,6 +79,8 @@ Check every item. Verify claims against the codebase with Read, Glob, and Grep; 
 - One H1, no skipped heading levels, no duplicate or near-duplicate H2s.
 - TOC and navigation rule from Phase 3e: a TOC exists above 150 lines (Educational / Awesome always has a TOC or anchor nav block), and every TOC entry matches a heading.
 - Every fenced code block names a language.
+- Privacy: when Phase 1k found an initialised telemetry, analytics, or error-reporting SDK, a `PrivacyInfo.xcprivacy`, or an outbound LLM provider key, and the README says nothing about what is sent, that is P1. The fix inserts the Privacy section per Phase 3b, built from the call sites; its opt-out line names only a key the code reads, else says "No opt-out found in the code."
+- Architecture section: in standard verbosity, anything beyond one diagram, 2-4 sentences, and a link is P2; the fix trims it to that cap and, when ARCHITECTURE.md exists, links it.
 
 **Visuals**
 - The type's screenshot positions from Phase 3d: a MUST position with no image is P1.
@@ -84,8 +91,8 @@ Check every item. Verify claims against the codebase with Read, Glob, and Grep; 
 - No feature text that exists only inside an image.
 
 **Writing**
-- Anti-AI Writing Rules: banned words, the 12 structural rules, the P0 and P1 checks, the portability test, voice register.
-- Honest limits: when the code gates OS, runtime, or input type (`sys.platform`, `#[cfg(target_os)]`, `engines`, the CI OS matrix, `NotImplementedError` on public paths) and the README is silent, propose a one-line limitation built from that evidence. P2.
+- Anti-AI Writing Rules: banned words, the 13 structural rules, the P0 and P1 checks, the portability test, voice register.
+- Honest limits: when Phase 1k evidence shows an OS gate, a version upper bound, a one-platform dependency, or `NotImplementedError` / `unimplemented!()` / `todo!()` on a public path and the README is silent, propose a limitation built from that evidence, in the Phase 3b format. P2.
 - In human-authored sections, flag only P0 checks, banned words, and factual errors. Leave tone, humour, and sentence style alone.
 
 **Maintenance / drift**
@@ -93,6 +100,7 @@ Check every item. Verify claims against the codebase with Read, Glob, and Grep; 
 - Hardcoded versions (badges, prose) that differ from the manifest are P0; ones that match today but duplicate the manifest are P2.
 - Placeholder text outside `<!-- -->` comments (`TODO`, `TBD`, `coming soon`, `link needed`, lorem ipsum) is P1.
 - Community files found in Phase 1c (CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, CHANGELOG) that the README never links are P2.
+- ARCHITECTURE.md, when it exists at the root: every code-map and flow path exists (Glob), else P0; every named entry symbol and function exists (Grep), else P1. If it says "Verified against `<sha>`", run `git log --oneline <sha>..HEAD -- <code-map paths>`; any commits there make it stale (P2), and the fix updates only the affected rows plus the sha. A README that never links it is P2. Leave its prose, invariants, and design reasons alone: a person may know what the code doesn't show.
 
 ### Assessment B: scripts
 
@@ -113,8 +121,8 @@ Keep the raw output and exit codes. These are the "before" results. If `python3`
 
 | Severity | Meaning | Examples |
 |---|---|---|
-| P0 | Broken or misleading | Wrong or failing command, dead link or anchor, false claim, license mismatch, dead badge host |
-| P1 | Blocks the reader or breaks a rule | Install buried, missing MUST section, post-install step missing, placeholder text, AI-isms |
+| P0 | Broken or misleading | Wrong or failing command, dead link or anchor, false claim, license mismatch, dead badge host, limitation the evidence contradicts, opt-out the code never reads, missing ARCHITECTURE.md path |
+| P1 | Blocks the reader or breaks a rule | Install buried, missing MUST section, post-install step missing, placeholder text, AI-isms, no Privacy section despite telemetry, unsourced comparison, missing hardware safety callout |
 | P2 | Polish | Missing expected-result line, unused screenshot, duplicated version string, style-level writing fixes |
 
 4. Write each fix against the H2 classification:
@@ -150,7 +158,7 @@ Fix (replace L42):
 ```
 ````
 
-Fix kinds: `replace Lx-Ly`, `insert after Lx`, `delete Lx-Ly [human]`, `move Lx-Ly to after Lz [human]`. Show every fix as a diff block like the one above.
+Fix kinds: `replace Lx-Ly`, `insert after Lx`, `delete Lx-Ly [human]`, `move Lx-Ly to after Lz [human]`. Show every fix as a diff block like the one above. A finding in ARCHITECTURE.md names the file in its header (`M5 · P0 · Maintenance · ARCHITECTURE.md L14 (Code map)`), and its line numbers refer to that file.
 
 After the findings, add three short lists:
 - Not actioned: dismissed script findings and intentional skips (for example "no Contributing: solo project"), each with a one-line reason.
@@ -170,14 +178,14 @@ With no P0 or P1 findings, make "All findings" the recommended option. With no f
 ## Step 5: Apply
 
 - None / report only: stop. Write nothing, and create no working copy.
-- Otherwise copy the README to `/tmp/write-readme-critique/README.md` and apply the chosen fixes there, from the highest line number to the lowest so earlier line numbers stay valid. Apply each fix as an exact replacement of its quoted old text. If the old text no longer matches (two fixes overlap), skip that fix and report it as skipped.
+- Otherwise copy the README to `/tmp/write-readme-critique/README.md` (and ARCHITECTURE.md to `/tmp/write-readme-critique/ARCHITECTURE.md` when a chosen fix targets it) and apply the chosen fixes there, from the highest line number to the lowest so earlier line numbers stay valid. Apply each fix as an exact replacement of its quoted old text. If the old text no longer matches (two fixes overlap), skip that fix and report it as skipped.
 - Change nothing outside the chosen fixes, with one exception: when a fix changes headings, regenerate an existing TOC and report it as "follow-on: TOC updated".
 - Re-run both Assessment B commands on the working copy. Keep `--dir <project-root>` so relative links resolve against the project, not `/tmp`.
 - If a fix introduced a new P0 or P1 script finding, correct the fix's own text and re-run. Never touch other text to clear it.
 
 Then show, in this order:
 1. Applied and skipped ids, with the reason for each skip.
-2. `diff -u <readme> /tmp/write-readme-critique/README.md`, the full unified diff.
+2. `diff -u <readme> /tmp/write-readme-critique/README.md`, the full unified diff, and the same for ARCHITECTURE.md when a fix touched it.
 3. A before/after table: check-anti-ai P0/P1/P2 counts and the validate-readme issue count.
 4. The question "Write these changes to `<path>`?". Skip it if the user already approved writing in their selection (for example "apply all and write it").
 
