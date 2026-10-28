@@ -13,11 +13,12 @@ Captures visual assets for README files. Works as a standalone tool or as a dele
 
 The write-readme skill detected no existing assets, the template requires visuals (MUST priority), and the user chose "Auto-capture." The write-readme skill passes:
 
-- Detected project type (slug from the unified taxonomy)
-- Screenshot positions from the template (parsed `<!-- screenshot: -->` placeholders)
+- Detected project type (a slug from the canonical type slugs table in `../../SKILL.md`)
+- Screenshot positions still uncovered (parsed `<!-- screenshot: -->` placeholders)
 - Project root path
+- Output directory: `/tmp/write-readme-draft/assets/screenshots/`
 
-This skill handles everything from that point: what to capture, how, which tools, fallbacks. It returns image paths or failure reasons. The write-readme skill never calls capture scripts directly.
+This skill handles everything from that point: what to capture, how, which tools, fallbacks. Nothing is written into the project on this path, because the user hasn't approved the README yet: every capture, `.tape` file, and intermediate image goes in the output directory, and no README is edited. Return each image's path under the output directory, or the failure reason. write-readme puts the references in its draft and copies the images into the project in its Phase 6, after approval. For screenshots, write-readme never calls the capture scripts directly.
 
 ### Path B: Direct user invocation
 
@@ -29,8 +30,10 @@ When invoked directly:
 2. If placeholders found, use them as the shot plan
 3. If no placeholders, run project type detection and apply the type-specific strategy
 4. Present the shot plan to the user for confirmation before capturing
-5. Capture, validate, save to `assets/screenshots/`
+5. Capture, validate, save to `assets/screenshots/` in the project (the user asked for files there)
 6. Update README.md image references (replace placeholders if they exist)
+
+`<out>` in the commands and code below is the output directory: `/tmp/write-readme-draft/assets/screenshots` on Path A, `assets/screenshots` on Path B.
 
 ---
 
@@ -38,28 +41,7 @@ When invoked directly:
 
 ### 1a. Detect project type
 
-Use the unified taxonomy from the design vision. Detection order (first match wins):
-
-| Priority | Type | Slug | Key Signals |
-|---|---|---|---|
-| 1 | Game / Interactive | `game` | `project.godot`, pygame/arcade/raylib/bevy imports, Phaser/PixiJS/Babylon imports, game asset dirs |
-| 2 | Visual Output / CV | `visual` | cv2/mediapipe/dlib imports + VideoCapture/imwrite/landmark patterns, matplotlib/plotly with data pipeline |
-| 3 | Generative AI | `gen-ai` | diffusers/StableDiffusion/comfyui imports |
-| 4 | Bot | `bot` | discord.py/telegram/slack-bolt imports, bot token patterns |
-| 5 | Browser Extension | `browser-ext` | manifest.json with permissions/content_scripts/background |
-| 6 | Mobile App | `mobile` | pubspec.yaml (Flutter), react-native dep, android/ + ios/ dirs |
-| 7 | Desktop Application | `desktop` | Electron/Tauri/Qt/GTK/SwiftUI/WPF imports |
-| 8 | TUI Application | `tui` | textual/blessed/tview/bubbletea/cursive/crossterm/ncurses imports |
-| 9 | Documentation Site / SSG | `docs-site` | docusaurus.config/vitepress/mkdocs.yml/astro.config/sphinx conf.py |
-| 10 | Web Application | `web-app` | Server framework dep + dev/start/serve script |
-| 11 | API / Backend Service | `api` | Server framework dep + NO frontend files |
-| 12 | CLI Tool | `cli` | bin in manifest, argparse/click/typer/clap/cobra imports |
-| 13 | Framework | `framework` | Plugin system, middleware patterns, scaffolding CLI |
-| 14 | ML/AI Model | `ml` | torch/tensorflow/jax imports + model dirs + training scripts (without visual output signals) |
-| 15 | DevOps / Infrastructure | `devops` | Kubernetes manifests, Terraform files, Ansible playbooks |
-| 16 | Educational / Awesome | `educational` | awesome- prefix, curated link lists, no source code |
-| 17 | Library / Package | `library` | exports/lib field, public API, no bin, no server framework |
-| 18 | Other / Unknown | `other` | Nothing above matched |
+Path A passes the slug; use it. On Path B, get a first guess with `bash ../../scripts/detect-project-type.sh --dir <project-root>`, then confirm it by reading the code against the taxonomy table in `../../SKILL.md` Phase 1b, which is the only copy of the types and their priorities.
 
 ### 1b. Detect available tooling
 
@@ -69,7 +51,7 @@ If Playwright is not installed: fall back to Mermaid diagrams in markdown, matpl
 
 ### 1c. Scan existing visual assets
 
-Search `assets/`, `images/`, `screenshots/`, `docs/images/`, `docs/screenshots/`, `docs/assets/`, `.github/`, `img/`, `media/`, `static/`, `public/` for `*.png`, `*.gif`, `*.svg`, `*.jpg`, `*.webp`. Also check the README for existing `![...]()` and `<img src>` image references. If existing assets already cover required positions, skip those captures.
+Search `assets/`, `images/`, `screenshots/`, `docs/images/`, `docs/screenshots/`, `docs/assets/`, `.github/`, `img/`, `media/`, `static/`, `public/` for `*.png`, `*.gif`, `*.svg`, `*.jpg`, `*.webp`. Also check the README for existing `![...]()` and `<img src>` image references. If existing assets already cover required positions, skip those captures. Path A skips this step: write-readme already searched (its Phase 1j) and passes only uncovered positions.
 
 ### 1d. Detect how to start the project
 
@@ -217,7 +199,7 @@ Present the custom shot plan with reasoning before capturing.
 ### 3a. Create output directory
 
 ```bash
-mkdir -p assets/screenshots
+mkdir -p <out>
 ```
 
 ### 3b. Start dev server (web apps)
@@ -251,7 +233,8 @@ Reference script: `../../scripts/capture-web-app.py`
 from playwright.sync_api import sync_playwright
 import os
 
-os.makedirs("assets/screenshots", exist_ok=True)
+OUT = "assets/screenshots"  # <out>; /tmp/write-readme-draft/assets/screenshots on Path A
+os.makedirs(OUT, exist_ok=True)
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
     ctx = browser.new_context(
@@ -262,7 +245,7 @@ with sync_playwright() as p:
     page = ctx.new_page()
     page.goto("http://localhost:3000", wait_until="networkidle", timeout=30000)
     page.wait_for_timeout(2000)  # Let animations settle
-    page.screenshot(path="assets/screenshots/hero-dashboard.png", full_page=False)
+    page.screenshot(path=f"{OUT}/hero-dashboard.png", full_page=False)
     browser.close()
 ```
 
@@ -270,12 +253,12 @@ Key settings: `device_scale_factor: 2` for retina quality, `color_scheme: "dark"
 
 ### 4b. VHS terminal recording
 
-Reference script: `../../scripts/capture-cli.sh`
+Reference script: `../../scripts/generate-tape.py`
 
-When VHS is available, generate a `.tape` file:
+When VHS is available, `python3 ../../scripts/generate-tape.py --command "mycommand --help" --output <out>/demo.gif` writes the `.tape` file and runs VHS (`--tape-only` writes the tape alone). The tape it writes looks like this:
 
 ```
-Output assets/screenshots/demo.gif
+Output <out>/demo.gif
 Set FontSize 18
 Set Width 900
 Set Height 500
@@ -292,7 +275,7 @@ Enter
 Sleep 3s
 ```
 
-Run with: `vhs assets/screenshots/demo.tape`
+Run a hand-written tape with `vhs <out>/demo.tape`.
 
 ### 4c. ANSI-to-HTML Playwright fallback (CLI tools without VHS)
 
@@ -375,7 +358,7 @@ For grids: resize all images to a uniform cell size, calculate row/column positi
 
 ### 5a. Optimize file sizes
 
-Strip metadata with ImageMagick (`convert -strip -quality 90`), compress PNGs with pngquant (`--quality=65-90`). See `../../scripts/optimize-images.sh`.
+Strip metadata with ImageMagick (`convert <file> -strip -quality 90 <file>`) and compress PNGs with pngquant (`pngquant --quality=65-90 --ext .png --force <file>`), in place under `<out>`.
 
 ### 5b. Generate light/dark variants
 
@@ -383,7 +366,7 @@ If both color schemes were captured, use the `<picture>` element with `<source m
 
 ### 5c. Validate captures
 
-Every captured image must pass before being used. Check: width >= 400px, pixel diversity > 10 unique colors (catches blank/error pages), file size between 1KB and 10MB. If validation fails, report the issue and do not include the image. A missing screenshot is better than a blank or broken one. See `../../scripts/validate-screenshots.py` for the implementation.
+Every captured image must pass before being used. Check: width >= 400px, pixel diversity > 10 unique colors (catches blank/error pages), file size between 1KB and 10MB. If validation fails, report the issue and do not include the image. A missing screenshot is better than a blank or broken one. Run `python3 ../../scripts/validate-screenshots.py <out>/*.png <out>/*.gif`.
 
 ---
 
@@ -391,7 +374,9 @@ Every captured image must pass before being used. Check: width >= 400px, pixel d
 
 ### Replace placeholders with image references
 
-Parse `<!-- screenshot:{shot_id} | ... -->` placeholders in the README. For each placeholder with a matching captured image, replace with the appropriate markdown.
+Path A: edit no README. Return the paths; write-readme places them in its draft using the rules below, with project paths (`assets/screenshots/hero.png`, not the `/tmp` path).
+
+Path B: parse `<!-- screenshot:{shot_id} | ... -->` placeholders in the README. For each placeholder with a matching captured image, replace with the appropriate markdown.
 
 ### Placement rules
 
@@ -480,12 +465,11 @@ Each script lives in the `scripts/` directory at the package root.
 | Script | Path | Purpose |
 |---|---|---|
 | `capture-web-app.py` | `../../scripts/capture-web-app.py` | Start dev server, capture web app pages via Playwright with retina scaling, dark mode, networkidle wait |
-| `capture-cli.sh` | `../../scripts/capture-cli.sh` | Generate VHS tape file from detected CLI entry point, run VHS to produce demo GIF |
+| `generate-tape.py` | `../../scripts/generate-tape.py` | Write a VHS tape file for a command and run VHS to produce a demo GIF |
 | `capture-terminal.py` | `../../scripts/capture-terminal.py` | ANSI-to-HTML conversion and Playwright screenshot fallback for CLI tools without VHS |
 | `render-mermaid.py` | `../../scripts/render-mermaid.py` | Render Mermaid diagram source to PNG via Playwright with dark theme |
 | `compose-images.py` | `../../scripts/compose-images.py` | Side-by-side comparisons, before/after compositions, and grid layouts using Pillow |
 | `validate-screenshots.py` | `../../scripts/validate-screenshots.py` | Check captured images for minimum size, pixel diversity (not blank), and file size sanity |
-| `optimize-images.sh` | `../../scripts/optimize-images.sh` | Strip metadata, compress PNGs via ImageMagick and pngquant |
 
 ---
 

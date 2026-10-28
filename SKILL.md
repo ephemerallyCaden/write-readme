@@ -314,9 +314,11 @@ Never generate a static badge that imitates live status (`build-passing`, `maint
 ### 3d. Visual assets
 
 Use the images Phase 1j classified as usable. Reference them at the template's screenshot positions and read each one to write accurate alt text. For positions still uncovered:
-- **MUST position**: act on the Phase 2b Screenshots answer. Auto-capture: delegate to the screenshot sub-skill at skills/screenshot/SKILL.md. I'll add later (the default): insert descriptive placeholders. Point to files: use the paths the user gave.
+- **MUST position**: act on the Phase 2b Screenshots answer. Auto-capture: delegate to the screenshot sub-skill at `skills/screenshot/SKILL.md` (its Path A) with the output directory `/tmp/write-readme-draft/assets/screenshots/`, and reference each returned image in the draft by its project path (`assets/screenshots/hero.png`). I'll add later (the default): insert descriptive placeholders. Point to files: use the paths the user gave.
 - **SHOULD/COULD position**: insert placeholders without asking.
 - **Minimal verbosity**: use found images only; no placeholders, no capture unless the user chose Auto-capture.
+
+Nothing is written into the project before Phase 6. Captures, `.tape` files, and rendered diagrams stay under `/tmp/write-readme-draft/`, which mirrors project paths: `/tmp/write-readme-draft/assets/screenshots/hero.png` is copied to `assets/screenshots/hero.png` on approval.
 
 Rendering hygiene:
 - If the README is published to a registry (`readme = "README.md"` in pyproject.toml, setup.py reading README into `long_description`, or a package.json without `"private": true`), use absolute `https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}` image URLs. PyPI and npm don't resolve relative paths. Take `{branch}` from:
@@ -414,6 +416,7 @@ Generated README for [name] ([type], [verbosity]).
 Sections: [list].
 Skipped: [list with reasons].
 Placeholders: [count and types].
+Captured: [paths to copy into the project, marking any that would overwrite a file] (only if Auto-capture ran).
 Warnings: [any issues].
 Companion: ARCHITECTURE.md, [N] lines, [K] TODO markers (only if generated).
 ```
@@ -426,13 +429,13 @@ The user can:
 - Approve ("looks good", "write it", "ship it") -- proceed to Phase 6
 - Request changes ("make the description shorter", "remove the tech stack table") -- apply, show updated, ask again
 - Request different verbosity ("make it minimal") -- regenerate, show, ask again
-- Abort ("cancel", "nevermind") -- no file written
+- Abort ("cancel", "nevermind") -- nothing is written to the project; the `/tmp` draft and captures are left behind
 
 Loop until approved or aborted. After the first pass, apply only the specific requested change; do not re-present the full options block.
 
 ## Phase 6: WRITE
 
-Write README.md to the project root, and ARCHITECTURE.md beside it if it was generated. Confirm: "README.md written. [N] lines." (plus the ARCHITECTURE.md line count).
+Write README.md to the project root, and ARCHITECTURE.md beside it if it was generated. Copy each captured image the README references from `/tmp/write-readme-draft/assets/` to the same path under the project root, creating directories as needed; the Phase 5 approval covers any overwrite it listed. Confirm: "README.md written. [N] lines." (plus the ARCHITECTURE.md line count and the copied image paths).
 
 If an existing README was replaced, note that the old version can be recovered via git (if git is initialized).
 
@@ -553,7 +556,7 @@ When the safety exception applies, the MOVED line becomes, for example:
 ```
   RUN-FIRST: kept below Security model, safety context
 ```
-Write after user confirms.
+Then continue in the main flow: write the enhanced draft to `/tmp/write-readme-draft/README.md`, run Phase 4 on it, present it in Phase 5 with this change list in place of the structural summary, and write it in Phase 6. There is no separate write step.
 
 ## Special Detection
 
