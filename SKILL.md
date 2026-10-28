@@ -1,9 +1,11 @@
 ---
 name: readme
-description: Generate polished, project-type-aware READMEs from codebase analysis. Use when asked to "generate a readme", "write a readme", "create a readme", or "/readme". Supports minimal/standard/detailed verbosity, 20 project types, anti-AI-slop writing rules, and optional screenshot capture. Also critiques existing READMEs ("/readme critique", "review/audit/improve my readme") with ranked findings and fixes it applies on request.
+description: Writes or improves a README (README.md) from codebase analysis, with run commands checked against build files, real screenshots and anti-AI writing rules. The prose avoids the patterns that make a README read as AI-generated. Use when asked to write, generate, create, update or rewrite a project README ("write a readme", "generate a README.md", "update my readme"), to critique, review, audit or improve an existing one ("/readme critique", "review my readme", "improve my readme"), or on "/readme". Supports minimal/standard/detailed verbosity and 20 project types. Screenshots are found in the repo or captured with Playwright or VHS. Critique mode reports ranked P0-P2 findings and applies the fixes the user picks; architecture mode ("/readme architecture") writes an ARCHITECTURE.md.
 ---
 
 # write-readme
+
+write-readme writes a project's README.md from its codebase. It detects the project type (one of 20), asks at most three questions, puts install and run commands checked against the build files first, uses real screenshots (found in the repo, or captured with Playwright or VHS), and holds the prose to anti-AI writing rules. Run it with `/readme`; `/readme critique` audits an existing README, and `/readme architecture` writes an ARCHITECTURE.md.
 
 Generate a README.md by analyzing the current codebase, asking 0-3 questions, and producing a project-type-aware document that reads like a human wrote it.
 
@@ -13,7 +15,7 @@ Output: `README.md` at the project root. If one exists, ask whether to enhance o
 
 ## Invocation
 
-Trigger phrases: "generate a readme", "write a readme", "create a readme", "/readme", "make a readme", "critique my readme", "review my readme", "audit my readme", "improve my readme"
+Trigger phrases: "generate a readme", "write a readme", "create a readme", "/readme", "make a readme", "update my readme", "rewrite my readme", "critique my readme", "review my readme", "audit my readme", "improve my readme"
 
 Options (natural language or flags):
 - `/readme` -- standard verbosity, auto-detected type
