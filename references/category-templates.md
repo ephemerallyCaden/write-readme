@@ -2,7 +2,7 @@
 
 > 15 project types, 45+ repos analyzed. Each template defines section ordering, MUST/SHOULD/COULD priorities, above-the-fold content, ideal length, and unique sections.
 
-> **Ordering override:** SKILL.md Phase 3b's Run-first rule wins over the orderings below. The install/run section is always the first H2 after title, badges, description, hero image, and TOC.
+> **Ordering override:** SKILL.md Phase 3b's Run-first rule wins over the orderings below. The run section is always the first H2; only the title, badges, description (≤2 sentences), hero image, nav row, and TOC come before it. What counts as the run section depends on the type: install + run command for most types, a scaffold command for Frameworks and Docs Sites, a download table or store badges for Desktop, Mobile, and Browser Extension, and a hosted URL or deploy button followed by self-host commands for Web Apps, APIs, and hosted Docs Sites. Prerequisites go inside the run section as its first line. Educational / Awesome lists, personal config / dotfiles repos, and ARCHITECTURE.md are exempt.
 
 ---
 
@@ -136,7 +136,7 @@ Title+Logo, Badges, Description, `<!-- screenshot:hero | format=gif -->`, TOC (i
 ### 3. Library / Package
 
 **Section ordering:**
-Title+Logo, Badges, Description, Code Example (before install), Features, Install, Quick Start, Usage (progressive), API/Docs link, Benchmarks, Sponsors, Contributing, License
+Title+Logo, Badges, Description, Code Example (before install, inside the first H2), Features, Install, Quick Start, Usage (progressive), API/Docs link, Benchmarks, Sponsors, Contributing, License
 
 **Section priorities:**
 
@@ -145,7 +145,7 @@ Title+Logo, Badges, Description, Code Example (before install), Features, Instal
 | Title+Logo | MUST | |
 | Badges | MUST | Version, downloads, CI, license |
 | Description | MUST | Category-value format |
-| Code Example | MUST | Before install -- show what using this looks like |
+| Code Example | MUST | 10 lines or fewer; may precede the install line inside the first H2 to show what using this looks like |
 | Features | SHOULD | Plain bullets, feature name first; a concrete number or named spec in each (no bold labels, rule 12) |
 | Install | MUST | Package manager command |
 | Quick Start | MUST | Minimal working example |
@@ -466,7 +466,7 @@ Title+Logo, Badges, Tagline, `<!-- screenshot:hero | description=Generated outpu
 ### 15. Bot (Discord/Slack/Telegram)
 
 **Section ordering:**
-Title+Avatar, Tagline, Badges, Description, Features/Commands, Prerequisites (bot registration), Quick Start (register, token, config, run), Config (.env), Commands reference, Plugins/Cogs, Docker, Contributing, License
+Title+Avatar, Tagline, Badges, Description, Features/Commands, Quick Start (bot registration as the prerequisite, then token, config, run), Config (.env), Commands reference, Plugins/Cogs, Docker, Contributing, License
 
 **Section priorities:**
 
@@ -477,7 +477,7 @@ Title+Avatar, Tagline, Badges, Description, Features/Commands, Prerequisites (bo
 | Badges | SHOULD | |
 | Description | MUST | What the bot does, which platform |
 | Features/Commands | MUST | Key commands and capabilities |
-| Prerequisites | MUST | Bot registration steps, required tokens |
+| Prerequisites | MUST | Bot registration steps, required tokens. First part of Quick Start, not a separate section |
 | Quick Start | MUST | Register bot, get token, configure, run |
 | Config (.env) | SHOULD | Token setup, environment variables |
 | Commands reference | SHOULD | Full command list with descriptions |

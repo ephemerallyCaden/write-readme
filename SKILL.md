@@ -185,7 +185,17 @@ Pick the template matching the detected type (see Type-to-Template Mapping below
 
 Follow the template ordering, with one override:
 
-**Run-first rule.** The first H2 section is always how to get the project running: install + the command that runs, plays, or imports it (heading: "Getting Started", "Quick Start", "Install", or "Local Development" for static sites). Only the title, badges, 1-2 sentence description, hero image, and TOC may come before it. Features, Architecture, Download tables, Model tables, Prerequisites prose, and everything else go after it. For Library / Package the minimal code example may sit inside this first section alongside install. For Educational / Awesome lists (no runnable code) this rule does not apply.
+**Run-first rule.** The first H2 is how to get the project running (heading: "Getting Started", "Quick Start", "Install", "Download", or "Local Development" for static sites). What counts as running depends on the type:
+- Install + the command that runs, plays, or imports it: CLI, TUI, Library, Framework, ML, CV, Bot, DevOps, Other.
+- A scaffold or template command that installs and runs in one step (`npm create ...`, `dotnet new ...`, `go run ...@latest`): Framework, Docs Site, project generators.
+- A per-OS download table or store badges: Desktop, Mobile, Browser Extension, and Game when release binaries exist. Build-from-source steps go later.
+- A hosted URL or one-click deploy button, followed by self-host commands: Web App, API, and Docs Site when a hosted version exists.
+
+Before it, allow only: title, badges, description (≤2 sentences), hero image, nav row, TOC. Features, Architecture, Model tables, Sponsors, and everything else go after it. Prerequisites go inside the run section as its first line ("Requires Flutter 3.12+."), never as their own section before or after it. Keep the first command, download table, store badge, or hosted URL within the first 80 lines (50 in minimal).
+
+Library / Package: a code snippet of 10 lines or fewer may precede the install line inside the first H2.
+
+Exempt: Educational / Awesome lists, personal config / dotfiles repos (a browse index with nothing to install), and ARCHITECTURE.md.
 
 Apply all anti-AI writing rules during generation (see section below), not as a post-pass. The full catalog with replacements and register notes is in `references/anti-ai-rules.md` (relative to this skill's base directory). Read it before writing prose.
 
@@ -246,7 +256,7 @@ Check the Length Targets table for the detected type. If over: trim COULD sectio
 
 ## Type-to-Template Mapping
 
-These lists set which sections each type gets. Placement of Install / Quick Start / Getting Started is governed by the Run-first rule in Phase 3b, which overrides the order shown here.
+These lists set which sections each type gets. Placement of the run section (Install, Quick Start, Getting Started, Download table, store links, Demo link + self-host, One-line scaffold) is governed by the Run-first rule in Phase 3b, which overrides the order shown here. Prerequisites and requirements listed below fold into the run section as its first line; longer hardware or platform tables can stay as later sections.
 
 **Web Application:**
 Title+Logo, Badges, Nav links, Description, `<!-- screenshot:hero -->`, Features, Demo link, Install (Docker-first), Config, Architecture, Docs, Contributing, Community, Sponsors, License
@@ -255,7 +265,7 @@ Title+Logo, Badges, Nav links, Description, `<!-- screenshot:hero -->`, Features
 Title+Logo, Badges, Description, `<!-- screenshot:hero | format=gif -->`, TOC (if >150 lines), Install (multi-platform), Quick Start, Usage Examples, Command Reference, Config, Shell Integration, FAQ, Contributing, License
 
 **Library / Package:**
-Title+Logo, Badges, Description, Code Example (before install), Features, Install, Quick Start, Usage (progressive), API/Docs link, Benchmarks, Sponsors, Contributing, License
+Title+Logo, Badges, Description, Code Example (10 lines or fewer, may precede the install line inside the first H2), Features, Install, Quick Start, Usage (progressive), API/Docs link, Benchmarks, Sponsors, Contributing, License
 
 **Framework:**
 Title+Logo, Badges, Tagline, Description, Features/Why, Quick Start (scaffold command), Install, Docs, Ecosystem/Plugins, Migration, Community, Contributing, License
@@ -291,7 +301,7 @@ Title+Icon, Badges, Description, `<!-- screenshot:hero | description=Device scre
 Title+Logo, Badges, Tagline, `<!-- screenshot:hero | description=Generated output -->`, Features, One-line scaffold, Docs, Showcase/"Trusted by", Deploy buttons, Contributing, License
 
 **Bot:**
-Title+Avatar, Tagline, Badges, Description, Features/Commands, Prerequisites (bot registration), Quick Start (register, token, config, run), Config (.env), Commands reference, Plugins/Cogs, Docker, Contributing, License
+Title+Avatar, Tagline, Badges, Description, Features/Commands, Quick Start (bot registration as the prerequisite, then token, config, run), Config (.env), Commands reference, Plugins/Cogs, Docker, Contributing, License
 
 **Other / Unknown:**
 Title, Badges, Description, Features, Install, Quick Start, Docs, Contributing, License
@@ -331,7 +341,7 @@ Title, Badges, Description, Features, Install, Quick Start, Docs, Contributing, 
 3. Fix every P0 and P1 finding and re-run until the `--severity P1` check exits 0. P2 findings and `validate-readme.py` issues: fix, or list them under "Warnings" in the Phase 5 summary with a reason. If `python3` is unavailable, note that in Warnings and rely on step 1.
 
 ### Completeness
-- Run-first rule holds: the first H2 is install/run (Phase 3b)
+- Run-first rule holds: the first H2 is the run section for this type, prerequisites sit inside it (Phase 3b)
 - All MUST sections for detected type are present
 - All detected community files are referenced
 - At least one code example for types that need it
@@ -472,7 +482,7 @@ When the user chooses "enhance" for an existing README:
 - **Human-authored** (preserve verbatim): project-specific prose >3 sentences, personal voice or opinions, content not inferable from codebase (philosophy, roadmap, acknowledgments, comparison with alternatives), custom sections not in any template.
 - **Mixed** (preserve human content, supplement): features section with some human items -- keep them, add newly detected features below. Usage with human examples -- keep them, add auto-inferred examples only for different functionality.
 
-**Step 3: Add missing sections.** Check which MUST sections for the detected type are absent. Insert at canonical position. Match surrounding style. Apply the Run-first rule: if install/run instructions exist but sit below Features or other content, move that section (content preserved verbatim) to be the first H2 and report it as MOVED in Step 5.
+**Step 3: Add missing sections.** Check which MUST sections for the detected type are absent. Insert at canonical position. Match surrounding style. Apply the Run-first rule: if install/run instructions exist but sit below Features or other content, move that section (content preserved verbatim) to be the first H2 and report it as MOVED in Step 5. Exception: never move it above a human-written H2 about security, compatibility, requirements, how it works, or a threat model. Someone put that context first so readers see it before running anything. Move the run section up only as far as directly below the last such section (or leave it if it is already there) and report `RUN-FIRST: kept below [section], safety context`.
 
 **Step 4: Update auto-generatable sections.** Regenerate badges, TOC, license text from current data.
 
@@ -485,6 +495,10 @@ Enhanced README for [name]:
   MOVED: Getting Started (to first section, Run-first rule)
   UNCHANGED: 4 other sections
 ```
+When the safety exception applies, the MOVED line becomes, for example:
+```
+  RUN-FIRST: kept below Security model, safety context
+```
 Write after user confirms.
 
 ## Special Detection
@@ -495,7 +509,7 @@ When detected: default Contributing to "Skip", suppress "PRs Welcome" badge, ski
 
 ### Academic / Coursework
 Signals: .university or .edu in manifest groupId/org, assessment brief files, single contributor, no license, module codes in repo name.
-When detected: default Contributing to "Skip" with academic integrity note, add "Developed as part of [module] at [university]" if inferable, emphasize architecture and design decisions, link to documentation directory, no "PRs Welcome" badge, default license to "Skip."
+When detected: default Contributing to "Skip" with academic integrity note, add "Developed as part of [module] at [university]" if inferable, emphasize architecture and design decisions (after the run section), link to documentation directory, no "PRs Welcome" badge, default license to "Skip."
 
 ### GitHub Pages / Static Site
 Signals: CNAME at root, .nojekyll, raw index.html with no manifest, gh-pages branch.
