@@ -7,6 +7,8 @@ description: Generate polished, project-type-aware READMEs from codebase analysi
 
 Generate a README.md by analyzing the current codebase, asking 0-3 questions, and producing a project-type-aware document that reads like a human wrote it.
 
+`<skill-dir>` in the commands below is this skill's base directory; `references/`, `scripts/`, and `skills/` paths are relative to it.
+
 Output: `README.md` at the project root. If one exists, ask whether to enhance or replace. Critique mode (below) edits an existing README instead of generating one.
 
 ## Invocation
@@ -32,9 +34,11 @@ Run all steps silently. No user interaction.
 Glob: package.json, pyproject.toml, setup.py, setup.cfg, Cargo.toml, go.mod, Gemfile, *.gemspec, pom.xml, build.gradle, build.gradle.kts, CMakeLists.txt, Makefile, mix.exs, pubspec.yaml, composer.json, Package.swift, *.cabal, dune-project, platformio.ini
 ```
 
-Read each found manifest. Extract: name, version, description, license, dependencies, scripts, entry points, engine/runtime requirements.
+Read each found manifest. Extract: name, version, description, license, dependencies, scripts, entry points, engine/runtime requirements. `python3 <skill-dir>/scripts/extract-metadata.py --dir <project-root>` prints those fields as JSON for the first manifest it recognises; use it as a starting point, and still read every manifest yourself, since it parses only one.
 
 ### 1b. Detect project type
+
+Get a first guess with `bash <skill-dir>/scripts/detect-project-type.sh --dir <project-root>`, which prints a canonical type slug. It matches file signals only, so confirm it by reading the code against the table below; where they disagree, the table and your reading win.
 
 Use the unified taxonomy below. First match wins (lowest priority number). Personal config and Hardware come first because their file signals are unambiguous, while the helper scripts those repos carry (an `argparse` installer, a matplotlib plot of sensor logs) would otherwise match CLI or Visual Output. A hardware repo that also holds a companion app is ambiguous: Phase 2a question 3.
 
@@ -526,28 +530,30 @@ Add one line, or a short subsection under Docs or Contributing, linking them and
 
 ## Length Targets
 
-Standard-mode ranges. Minimal and early-stage projects use the Phase 3f ranges instead. In detailed mode the upper bound may stretch by 30% (CLI and TUI: up to 1200 lines).
+Standard-mode ranges, one row per type; `data/type-slugs.json` and `scripts/validate-readme.py` hold the same values. Minimal and early-stage projects use the Phase 3f ranges instead. In detailed mode the upper bound may stretch by 30% (CLI and TUI: up to 1200 lines).
 
 | Type | Target Lines |
 |------|-------------|
-| Web Application | 50-300 |
-| CLI Tool / TUI | 60-500 |
-| Library / Package | 40-400 |
-| Framework | 60-300 |
-| Game / Interactive | 100-400 |
-| Visual Output / CV | 150-500 |
-| ML/AI Model | 200-800 |
-| Desktop Application | 100-350 |
-| DevOps / Infrastructure | 80-300 |
-| Educational / Awesome | 500+ |
-| Browser Extension | 80-400 |
-| API / Backend Service | 100-350 |
-| Mobile App | 150-350 |
-| Documentation Site / SSG | 60-200 |
-| Bot | 140-400 |
 | Personal config / dotfiles | 30-200 |
 | Hardware / Embedded | 100-400 |
-| Other | 80-300 |
+| Game / Interactive | 100-400 |
+| Visual Output / CV | 150-500 |
+| Generative AI | 150-500 |
+| Bot | 140-400 |
+| Browser Extension | 80-400 |
+| Mobile App | 150-350 |
+| Desktop Application | 100-350 |
+| TUI Application | 60-500 |
+| Documentation Site / SSG | 60-200 |
+| Web Application | 50-300 |
+| API / Backend Service | 100-350 |
+| CLI Tool | 60-500 |
+| Framework | 60-300 |
+| ML/AI Model | 200-800 |
+| DevOps / Infrastructure | 80-300 |
+| Educational / Awesome | 500+ |
+| Library / Package | 40-400 |
+| Other / Unknown | 80-300 |
 
 ## Screenshot Placeholder Format
 
@@ -556,6 +562,8 @@ Standard-mode ranges. Minimal and early-stage projects use the Phase 3f ranges i
 ```
 
 ### Canonical type slugs
+
+The keys of `data/type-slugs.json`. `--type` and the scripts accept only these.
 
 | Detection Category | Slug |
 |--------------------|------|
