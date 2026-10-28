@@ -14,6 +14,8 @@ import argparse
 import re
 import sys
 
+from _mdlib import ATX_HEADING_RE, INLINE_CODE_RE, Line, parse_lines
+
 
 # Tier 1A banned words (P0 — must never appear)
 BANNED_WORDS: list[str] = [
@@ -109,7 +111,22 @@ BULLET_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+(.*)$")
 BOLD_LABEL_RE = re.compile(
     r"^\*\*([^*]+?)(?::\*\*|\*\*\s*(?:--|\u2014|\u2013|:))\s*\S"
 )
-INLINE_CODE_RE = re.compile(r"(`+).+?\1")
+# Lists under these headings (and their subheadings) are reference lists, so
+# rule 12 does not apply. A heading that also says "feature" is not exempt.
+FEATURE_HEADING_RE = re.compile(r"\bfeatures?\b", re.IGNORECASE)
+REFERENCE_HEADING_RE = re.compile(
+    r"\b(?:structure|files?|layout|config|configuration|options?|flags?|api|"
+    r"reference|languages?|environment)\b",
+    re.IGNORECASE,
+)
+
+
+def is_reference_label(label: str) -> bool:
+    """Inline code or a file/path token (`train.py`, src/app) names a thing, not a feature."""
+    label = label.strip()
+    if re.fullmatch(r"(`+).+\1", label):
+        return True
+    return not re.search(r"\s", label) and ("/" in label or bool(re.search(r"\.\w", label)))
 
 
 def check_line(line: str, lineno: int) -> list[dict]:
@@ -212,43 +229,26 @@ def check_line(line: str, lineno: int) -> list[dict]:
     return findings
 
 
-def strip_html_comments(lines: list[str]) -> list[str]:
-    """Blank out <!-- ... --> spans (which may cross lines), keeping line count."""
-    out: list[str] = []
-    in_comment = False
-    for line in lines:
-        kept = ""
-        rest = line
-        while rest:
-            if in_comment:
-                end = rest.find("-->")
-                if end == -1:
-                    break
-                rest = rest[end + 3:]
-                in_comment = False
-            else:
-                start = rest.find("<!--")
-                if start == -1:
-                    kept += rest
-                    break
-                kept += rest[:start]
-                rest = rest[start + 4:]
-                in_comment = True
-        out.append(kept)
-    return out
+def is_reference_heading(title: str) -> bool:
+    return bool(REFERENCE_HEADING_RE.search(title)) and not FEATURE_HEADING_RE.search(title)
 
 
-def check_structure(prose: list[tuple[int, str | None]]) -> list[dict]:
-    """List and em dash checks over prose lines.
+def check_structure(lines: list[Line]) -> list[dict]:
+    """List and em dash checks over prose lines (HTML comments removed).
 
-    `prose` holds (lineno, text) with HTML comments and inline code removed;
-    text is None for fenced code lines, which leave list state untouched.
+    Fenced code lines are skipped and leave list state untouched.
+
+    Bold-label items are exempt from rule 12 when the label is inline code or
+    a file/path token, or when the list sits in a reference section
+    (Structure, Files, Configuration, Options, API, ...), subsections included.
     """
     findings: list[dict] = []
     bold_items: list[tuple[int, str, str]] = []
     prose_dashes: list[tuple[int, str]] = []
     in_list = False
     prev_blank = True
+    # Level of the reference heading whose section we are in, if any
+    reference_level: int | None = None
 
     def close_list() -> None:
         if len(bold_items) > MAX_BOLD_LABEL_ITEMS:
@@ -262,20 +262,28 @@ def check_structure(prose: list[tuple[int, str | None]]) -> list[dict]:
                 })
         bold_items.clear()
 
-    for lineno, text in prose:
-        if text is None:
+    for line in lines:
+        if line.in_code:
             continue
+        lineno, raw = line.lineno, line.text
+        text = INLINE_CODE_RE.sub("CODE", raw)
         stripped = text.strip()
         if not stripped:
             prev_blank = True
             continue
 
-        bullet = BULLET_RE.match(text)
+        heading = ATX_HEADING_RE.match(text)
+        if heading:
+            level = len(heading.group(1))
+            if reference_level is None or level <= reference_level:
+                reference_level = level if is_reference_heading(heading.group(2)) else None
+
+        bullet = BULLET_RE.match(raw)
         if bullet:
             in_list = True
             m = BOLD_LABEL_RE.match(bullet.group(1))
-            if m:
-                bold_items.append((lineno, m.group(1).strip(), stripped))
+            if m and reference_level is None and not is_reference_label(m.group(1)):
+                bold_items.append((lineno, m.group(1).strip(), raw.strip()))
         elif in_list and (text[:1].isspace()
                           or (not prev_blank and not stripped.startswith("#"))):
             pass  # indented or lazy continuation of the current item
@@ -316,26 +324,11 @@ def check_structure(prose: list[tuple[int, str | None]]) -> list[dict]:
 
 def check_content(content: str) -> list[dict]:
     all_findings: list[dict] = []
-    in_code_block = False
-    lines = content.splitlines()
-    prose: list[tuple[int, str | None]] = []
-
-    for lineno, (line, uncommented) in enumerate(
-        zip(lines, strip_html_comments(lines)), start=1
-    ):
-        # Skip code blocks
-        if line.strip().startswith("```"):
-            in_code_block = not in_code_block
-            prose.append((lineno, None))
-            continue
-        if in_code_block:
-            prose.append((lineno, None))
-            continue
-
-        all_findings.extend(check_line(line, lineno))
-        prose.append((lineno, INLINE_CODE_RE.sub("CODE", uncommented)))
-
-    all_findings.extend(check_structure(prose))
+    lines = parse_lines(content)
+    for line in lines:
+        if not line.in_code:
+            all_findings.extend(check_line(line.raw, line.lineno))
+    all_findings.extend(check_structure(lines))
     all_findings.sort(key=lambda f: f["line"])
 
     # Deduplicate: same line + same rule
@@ -367,12 +360,12 @@ def main() -> None:
         "--severity",
         default="P0",
         choices=["P0", "P1", "P2"],
-        help="Minimum severity to report (default: P0 = all severities)",
+        help="Severity threshold: report this level and anything more severe. "
+             "P0 = P0 only, P1 = P0+P1, P2 = all (default: P0)",
     )
     args = parser.parse_args()
 
     severity_order = {"P0": 0, "P1": 1, "P2": 2}
-    min_severity = severity_order[args.severity]
 
     if args.file:
         try:
@@ -388,10 +381,7 @@ def main() -> None:
 
     findings = check_content(content)
 
-    # Filter by severity
-    findings = [f for f in findings if severity_order[f["severity"]] <= min_severity + 2]
-    # Actually: filter so we only show findings at min_severity or more severe
-    # P0 is most severe. If --severity P1, show P0 and P1. If P2, show all.
+    # P0 is most severe. --severity P1 shows P0 and P1; P2 shows all.
     max_shown = severity_order[args.severity]
     findings = [f for f in findings if severity_order[f["severity"]] <= max_shown]
 
