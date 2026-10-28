@@ -215,7 +215,11 @@ Skip a candidate when either holds:
 
 If every candidate is skipped, use the first one that exists, exactly as written (`ripgrep`).
 
-Two candidates are the same name when they match after lowercasing and removing spaces, hyphens, and underscores (`Climb Log`, `climb-log`, `climb_log`). Ask Phase 2a question 5 only when candidates 1 and 2 both exist, neither is skipped, and they are not the same name (display name "Ganba" vs manifest name "Climb Log"). A repo or directory name that differs from the title never triggers the question: a Unity `productName` of `TinySimProject` is the title even when the repo is `TinySim`.
+A name's normalized form is the name lowercased with spaces, hyphens, and underscores removed (`Climb Log`, `climb-log`, and `climb_log` all normalize to `climblog`). Two candidates are the same name when their normalized forms are equal.
+
+Repo-name exception, applied before the chain picks the title. Let R be candidate 3, or candidate 4 when there is no git remote. If R is not skipped, check candidates 1 and 2: when a candidate's normalized form ends in `project`, `game`, or `app`, and removing that one suffix leaves exactly R's normalized form, replace the candidate with R as written. Display name `TinySimProject` with repo `TinySim` gives `TinySim`; `TinySim Game` and `tinysim-app` match the same repo. Only one trailing suffix is removed, and a skipped R never replaces anything (repo `tinysim` leaves `TinySimProject` as the title).
+
+Ask Phase 2a question 5 only when candidates 1 and 2 both exist after the exception, neither is skipped, and they are not the same name (display name "Ganba" vs manifest name "Climb Log"). Otherwise a repo or directory name never triggers the question: display name `Starfall` is the title even when the repo is `Skyline`.
 
 ### 1i. Supplementary docs
 
@@ -452,7 +456,7 @@ The Run-first rule in Phase 3b overrides those orderings: wherever the template 
 ## Phase 4: VERIFY
 
 ### Correctness
-- The H1 title is the Phase 1h title (or the user's Phase 2a question 5 answer). Package names in install commands, imports, and registry links match the manifest name exactly, even when it differs from the title (title `Climb Log`, `pip install climb_log`)
+- The H1 title is the Phase 1h title, with its repo-name exception applied (or the user's Phase 2a question 5 answer). Package names in install commands, imports, and registry links match the manifest name exactly, even when it differs from the title (title `Climb Log`, `pip install climb_log`)
 - Version is current
 - License section matches the LICENSE file, or is the Phase 2b no-license line when there is no file
 - Install command uses correct package name and works
