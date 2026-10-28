@@ -87,7 +87,7 @@ Title+Logo, Badges, Nav links, Description, `<!-- screenshot:hero -->`, Features
 | Nav links | SHOULD | Docs, Demo, Community, Sponsors |
 | Description | MUST | What it does, who it is for |
 | Screenshot/Demo | MUST | Hero screenshot of main dashboard with data |
-| Features | MUST | Bold-keyword bullet list |
+| Features | MUST | Plain bullets, feature name first; a concrete number or named spec in each (no bold labels, rule 12) |
 | Demo link | SHOULD | Link to live instance |
 | Install (Docker-first) | MUST | Docker Compose is the primary path |
 | Config | SHOULD | Environment variables, .env setup |
@@ -146,7 +146,7 @@ Title+Logo, Badges, Description, Code Example (before install), Features, Instal
 | Badges | MUST | Version, downloads, CI, license |
 | Description | MUST | Category-value format |
 | Code Example | MUST | Before install -- show what using this looks like |
-| Features | SHOULD | Bold-keyword bullets with specific claims |
+| Features | SHOULD | Plain bullets, feature name first; a concrete number or named spec in each (no bold labels, rule 12) |
 | Install | MUST | Package manager command |
 | Quick Start | MUST | Minimal working example |
 | Usage (progressive) | SHOULD | Basic, realistic, advanced |

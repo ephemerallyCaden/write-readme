@@ -171,7 +171,7 @@ Unanswered choices use defaults. "Go", "just do it", or Enter accepts all defaul
 
 **detailed** -- Polished landing page. Open source launches, portfolio pieces.
 - Includes: all MUST + SHOULD + COULD sections
-- Adds: comparison with alternatives, performance notes, detailed config, env vars table, directory tree, star history widget, contributor graph
+- Adds: comparison with alternatives, performance notes, detailed config, env vars table, directory tree
 - Target: upper end of ideal length or above
 - Triggered by: "detailed", "comprehensive", "full", "polished", "landing page", "launch"
 
@@ -320,7 +320,7 @@ Title, Badges, Description, Features, Install, Quick Start, Docs, Contributing, 
 | Go | Has main package? | Use `go run .` |
 
 ### Anti-AI check (mandatory)
-1. Self-review every prose sentence against the P0 + P1 checks and the 12 structural rules in the Anti-AI Writing Rules section below.
+1. Self-review every prose sentence against the P0 + P1 checks and the 13 structural rules in the Anti-AI Writing Rules section below.
 2. Then run the scripted check. Write the draft to a temp file (e.g. `/tmp/write-readme-draft/README.md`, never the project root before approval) and run, with `<skill-dir>` being this skill's base directory:
    ```bash
    python3 <skill-dir>/scripts/check-anti-ai.py --file /tmp/write-readme-draft/README.md --severity P1   # gate: P0+P1
@@ -399,7 +399,7 @@ delve, robust, comprehensive, leverage, seamless, cutting-edge, empower, streaml
 | it's worth noting | (cut -- just state the fact) |
 | ecosystem (in prose) | system, community, network |
 
-### 12 structural rules
+### 13 structural rules
 
 1. No emoji in headings. Only exception: emoji directly next to a proper noun brand/mascot.
 2. No throat-clearing. Never open a section by explaining what it covers. The heading does that. Jump to content.
@@ -412,7 +412,8 @@ delve, robust, comprehensive, leverage, seamless, cutting-edge, empower, streaml
 9. No "In today's world of..." -- ever. No temporal scene-setting.
 10. End on concrete points, not summaries. No "Overall, this tool provides..." endings.
 11. Every prose sentence must pass the portability test (see below).
-12. Feature lists: no bold labels, no em dashes. Write plain bullets that start with the feature name followed by a colon or just flow into the description naturally. Do not repeat the same `**Name** -- description` pattern on every line.
+12. Feature lists: no bold labels, no em dashes. Write plain bullets that start with the feature name followed by a colon or just flow into the description naturally. Do not repeat the same `**Name** -- description` pattern on every line. This applies to lists of features, capabilities, and benefits. Reference lists (files, directories, config keys, options, flags, languages) may lead with the name in backticks or bold, because the name is what the reader scans for.
+13. Earned emphasis only. Bold a keyword only when it helps scanning: at most one inline bold per bullet, never at the start of a feature bullet (rule 12). Never bold for drama, and never bold whole sentences.
 
 ### Voice register
 
@@ -428,24 +429,36 @@ If a sentence could appear in another project's README unchanged, it is filler. 
 Fails: "A powerful tool for modern developers." "Easy to get started." "Built with performance in mind."
 Passes: "Compiles 100K lines of Python in under 200ms." "Mirror your Android screen at 30-120fps." "Manage your zsh configuration with 300+ plugins."
 
-### P0 checks (credibility killers -- must fix)
-- No chatbot artifacts ("Feel free to...", "I hope this helps", "Great question")
+### Severity levels
+
+These match `scripts/check-anti-ai.py`. P0 and P1 both block publishing (the Phase 4 gate is `--severity P1`); the split says which kind of failure it is. Items marked (scripted) are caught by the checker; the rest need self-review.
+
+**P0 -- banned words (must fix)**
+- No word from the banned list above (scripted, except "landscape", which is banned only as a metaphor)
+
+**P1 -- chatbot and template phrasing (must fix)**
+- No chatbot artifacts ("Feel free to...", "I hope this helps", "Don't hesitate to", "Please note that") (scripted)
+- No template phrases ("in order to", "serves as a", "a wide range of", "a [adjective] step towards [adjective] [noun]") (scripted)
+- No "Let's" openers (scripted)
+- No emoji in headings (scripted)
+- No bold-label or em-dash feature lists, rule 12 (scripted)
 - No cutoff disclaimers ("As of my last update")
 - No vague attributions ("Experts believe", "Studies show")
 - No significance inflation on routine features
 - No reasoning chain artifacts ("Let me break this down")
-
-### P1 checks (AI smell -- fix before publishing)
-- No Tier 1A words (see banned list above)
-- No template phrases ("a [adjective] step towards [adjective] [noun]")
-- No "Let's" openers
 - No synonym cycling within the same section
 - No formulaic openings ("In the rapidly evolving world of...")
 - No "Whether you're X or Y" false-breadth
-- No performed candor ("Let's be honest")
-- No narrated candor ("In the interest of transparency")
-- No section preambles explaining what the section covers
+- No hedge-stacked predictions ("could potentially", "may eventually")
+- No performed or narrated candor ("Let's be honest", "In the interest of transparency")
 - No fake enthusiasm ("We're excited to...", "We're thrilled to...")
+- No rhetorical questions in descriptions or prose. Questions are fine as FAQ entries and router lines ("Looking for the command-line tool? See ...").
+
+**P2 -- polish (fix, or list under Warnings)**
+- Section preambles ("This section covers...") (scripted). Rule 2 bans them, so fix these rather than listing them.
+- Transition words opening a line: Moreover, Furthermore, Additionally (scripted)
+- More than 2 em dashes in prose (scripted)
+- Compulsive rule of three, uniform paragraph lengths, generic conclusions ("The future looks bright")
 
 ## Enhance Mode
 
@@ -478,7 +491,7 @@ Write after user confirms.
 
 ### Solo project
 Signals: 1 contributor, <5 stars, no CONTRIBUTING.md, no CI or `publish_to: none` or academic markers.
-When detected: default Contributing to "Skip", suppress "PRs Welcome" badge, skip community links, frame as portfolio/showcase. If user overrides, generate lightweight version: "This is a personal project. Feel free to fork it or open issues for questions."
+When detected: default Contributing to "Skip", suppress "PRs Welcome" badge, skip community links, frame as portfolio/showcase. If user overrides, generate lightweight version: "This is a personal project. Fork it, or open an issue with questions."
 
 ### Academic / Coursework
 Signals: .university or .edu in manifest groupId/org, assessment brief files, single contributor, no license, module codes in repo name.
