@@ -73,6 +73,41 @@ class DetectProjectTypeTests(unittest.TestCase):
         root = self.make("dotfiles-cli", {"package.json": '{"name": "dotfiles-cli", "bin": {"d": "x.js"}}'})
         self.assertEqual(self.detect(root), "cli")
 
+    # Dependency and environment directories are not project code (review #15).
+    LIB = {"package.json": '{"name": "lib", "main": "index.js"}', "index.js": "module.exports = 1;\n"}
+
+    def test_node_modules_bot_dependency_ignored(self):
+        root = self.make("lib-discord", {**self.LIB,
+                                         "node_modules/dep/index.js": "const d = require('discord.js');\n"})
+        self.assertEqual(self.detect(root), "library")
+
+    def test_node_modules_hex_string_ignored(self):
+        root = self.make("lib-hex", {**self.LIB,
+                                     "node_modules/dep/hash.js": 'import h from "./h"; const k = "a9d3f0";\n'})
+        self.assertEqual(self.detect(root), "library")
+
+    def test_venv_argparse_ignored(self):
+        root = self.make("pylib", {"pyproject.toml": '[project]\nname = "pylib"\n',
+                                   "pylib/__init__.py": "VALUE = 1\n",
+                                   ".venv/lib/python3.12/site-packages/tool/cli.py": "import argparse\n"})
+        self.assertEqual(self.detect(root), "library")
+
+    def test_other_excluded_dirs_ignored(self):
+        for d in ["venv", "vendor", "dist", "build", "target", "__pycache__", ".git"]:
+            with self.subTest(dir=d):
+                root = self.make(f"ex-{d.strip('._')}", {**self.LIB, f"{d}/x/cli.py": "import argparse\n",
+                                                         f"{d}/x/main.tf": 'resource "x" "y" {}\n'})
+                self.assertEqual(self.detect(root), "library")
+
+    def test_chart_yaml_alone_is_devops(self):
+        # `A || B && C` used to parse as `(A || B) && C`, so Chart.yaml needed values.yaml.
+        self.assertEqual(self.detect(self.make("chart", {"Chart.yaml": "name: c\n"})), "devops")
+
+    def test_templates_need_values_yaml(self):
+        self.assertEqual(self.detect(self.make("tv", {"templates/a.txt": "", "values.yaml": "a: 1\n"})),
+                         "devops")
+        self.assertEqual(self.detect(self.make("t", {"templates/a.txt": ""})), "other")
+
     def test_home_assistant_config(self):
         root = self.make("ha", {"configuration.yaml": "homeassistant:\n  name: Home\n"})
         self.assertEqual(self.detect(root), "dotfiles")

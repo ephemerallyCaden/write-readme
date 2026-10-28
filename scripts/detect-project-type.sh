@@ -35,11 +35,29 @@ done
 
 cd "$DIR"
 
+# Dependency, environment and build-output directories are never the
+# project's own code; every grep and find below skips them.
+EXCLUDED_DIRS=(node_modules .venv venv .git vendor dist build target __pycache__)
+GREP_EXCLUDES=()
+PRUNE=(\()
+for d in "${EXCLUDED_DIRS[@]}"; do
+    GREP_EXCLUDES+=("--exclude-dir=$d")
+    if [ "${#PRUNE[@]}" -gt 1 ]; then PRUNE+=(-o); fi
+    PRUNE+=(-name "$d")
+done
+PRUNE+=(\) -prune -o)
+
+# find_any DEPTH EXPR...: true if any non-excluded path matches EXPR.
+find_any() {
+    local depth="$1"; shift
+    find . -maxdepth "$depth" "${PRUNE[@]}" \( "$@" \) -print -quit 2>/dev/null | grep -q .
+}
+
 # Helper: search source files for an import/require pattern.
 # Uses grep -q (stops at the first match) rather than piping into head: under
 # pipefail, a grep killed by SIGPIPE after head exits made the check fail.
 has_pattern() {
-    grep -rqE --include='*.py' --include='*.js' --include='*.ts' --include='*.tsx' \
+    grep -rqE "${GREP_EXCLUDES[@]}" --include='*.py' --include='*.js' --include='*.ts' --include='*.tsx' \
          --include='*.jsx' --include='*.rs' --include='*.go' --include='*.rb' \
          --include='*.java' --include='*.dart' --include='*.cs' --include='*.lua' \
          --include='*.toml' --include='*.cfg' --include='*.txt' \
@@ -111,7 +129,7 @@ if has_any_file ".chezmoiroot" ".chezmoiignore" ".chezmoi.toml.tmpl" ".chezmoi.y
     "install.conf.yaml" ".stow-local-ignore"; then
     echo "dotfiles"; exit 0
 fi
-if [ "$(find . -maxdepth 1 -name 'dot_*' 2>/dev/null | wc -l | tr -d ' ')" -ge 2 ]; then
+if [ "$(find . -maxdepth 1 "${PRUNE[@]}" -name 'dot_*' -print 2>/dev/null | wc -l | tr -d ' ')" -ge 2 ]; then
     echo "dotfiles"; exit 0
 fi
 if has_file "configuration.yaml"; then
@@ -122,13 +140,11 @@ fi
 if ! has_manifest && [ "$(count_rc_files)" -ge 3 ]; then echo "dotfiles"; exit 0; fi
 
 # --- Priority 2: Hardware / Embedded ---
-if find . -maxdepth 2 -not -path './node_modules/*' -not -path './.git/*' \
-    \( -name 'platformio.ini' -o -name '*.kicad_pro' -o -name '*.kicad_pcb' \
-       -o -name '*.kicad_sch' -o -iname 'bom.csv' \) -print -quit 2>/dev/null | grep -q .; then
+if find_any 2 -name 'platformio.ini' -o -name '*.kicad_pro' -o -name '*.kicad_pcb' \
+       -o -name '*.kicad_sch' -o -iname 'bom.csv'; then
     echo "hardware"; exit 0
 fi
-if find . -maxdepth 2 -name '*.ino' -not -path './examples/*' -not -path './node_modules/*' \
-    -print -quit 2>/dev/null | grep -q .; then
+if find_any 2 -name '*.ino' -not -path './examples/*'; then
     echo "hardware"; exit 0
 fi
 
@@ -200,7 +216,7 @@ if has_file "pubspec.yaml"; then
 fi
 if pkg_has_dep "react-native"; then echo "mobile"; exit 0; fi
 if has_any_dir "android" "ios"; then
-    if find . -maxdepth 2 -name "*.xcodeproj" -print -quit 2>/dev/null | grep -q .; then
+    if find_any 2 -name "*.xcodeproj"; then
         echo "mobile"; exit 0
     fi
 fi
@@ -213,7 +229,7 @@ if has_pattern 'import.*QtWidgets|from.*QtWidgets|QApplication|QMainWindow'; the
 if has_pattern 'import\s+gi.*Gtk|from\s+gi.*Gtk|gtk::prelude'; then echo "desktop"; exit 0; fi
 if has_pattern 'import\s+SwiftUI|import\s+Cocoa|import\s+AppKit'; then echo "desktop"; exit 0; fi
 if has_pattern 'System\.Windows|WPF|WindowsForms'; then echo "desktop"; exit 0; fi
-if find . -maxdepth 2 -name "*.desktop" -print -quit 2>/dev/null | grep -q .; then echo "desktop"; exit 0; fi
+if find_any 2 -name "*.desktop"; then echo "desktop"; exit 0; fi
 
 # --- Priority 10: TUI Application ---
 if has_pattern 'from\s+textual|import\s+textual|from\s+blessed|import\s+blessed'; then echo "tui"; exit 0; fi
@@ -307,10 +323,10 @@ if has_pattern 'import\s+torch|from\s+torch|import\s+tensorflow|from\s+tensorflo
 fi
 
 # --- Priority 17: DevOps / Infrastructure ---
-if find . -maxdepth 3 -name "*.tf" -print -quit 2>/dev/null | grep -q .; then echo "devops"; exit 0; fi
+if find_any 3 -name "*.tf"; then echo "devops"; exit 0; fi
 if has_any_file "ansible.cfg" "playbook.yml"; then echo "devops"; exit 0; fi
-if has_file "Chart.yaml" || has_dir "templates" && has_file "values.yaml"; then echo "devops"; exit 0; fi
-if find . -maxdepth 3 -name "*.yaml" -exec grep -q 'apiVersion.*apps/v1\|kind:\s*Deployment\|kind:\s*Service' {} \; -print -quit 2>/dev/null | grep -q .; then
+if has_file "Chart.yaml" || { has_dir "templates" && has_file "values.yaml"; }; then echo "devops"; exit 0; fi
+if find_any 3 -name "*.yaml" -exec grep -q 'apiVersion.*apps/v1\|kind:\s*Deployment\|kind:\s*Service' {} \;; then
     echo "devops"; exit 0
 fi
 
@@ -319,7 +335,7 @@ if grep -qi '^awesome-' <<<"$REPO_NAME"; then echo "educational"; exit 0; fi
 if has_file "README.md"; then
     if grep -cE '^\s*[-*]\s+\[' README.md 2>/dev/null | awk '{if ($1 > 20) exit 0; else exit 1}'; then
         # Curated list with >20 link items and minimal source code
-        SRC_COUNT=$(find . -maxdepth 2 \( -name "*.py" -o -name "*.js" -o -name "*.ts" -o -name "*.go" -o -name "*.rs" \) 2>/dev/null | wc -l | tr -d ' ')
+        SRC_COUNT=$(find . -maxdepth 2 "${PRUNE[@]}" \( -name "*.py" -o -name "*.js" -o -name "*.ts" -o -name "*.go" -o -name "*.rs" \) -print 2>/dev/null | wc -l | tr -d ' ')
         if [ "$SRC_COUNT" -lt 3 ]; then
             echo "educational"; exit 0
         fi
@@ -342,7 +358,7 @@ if has_file "pyproject.toml" || has_file "setup.py" || has_file "setup.cfg"; the
     fi
 fi
 if has_file "go.mod" && ! has_pattern 'func\s+main'; then echo "library"; exit 0; fi
-if has_file "Gemfile" || find . -maxdepth 1 -name "*.gemspec" -print -quit 2>/dev/null | grep -q .; then
+if has_file "Gemfile" || find_any 1 -name "*.gemspec"; then
     echo "library"; exit 0
 fi
 
