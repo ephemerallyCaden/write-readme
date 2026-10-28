@@ -15,7 +15,7 @@ Resolve the target before anything else:
 2. Still missing: reply "No README found at `<path>`. Want me to generate one?" and stop. On yes, run generate mode from Phase 1.
 3. Not Markdown (`.rst`, `.txt`, `.adoc`): reply that critique supports Markdown only, and stop.
 
-Project root is the README's directory. Run Phase 1 against it, so a package README in a monorepo is judged against its own package manifest.
+Project root is the nearest directory, starting at the README's own and walking up, that holds a package manifest (the Phase 1a list) or `.git`. Run Phase 1 against it, so a package README in a monorepo is judged against its own package manifest.
 
 ## Hard rules
 
@@ -71,10 +71,10 @@ Check every item. Verify claims against the codebase with Read, Glob, and Grep; 
 - The primary install path is not collapsed inside `<details>`.
 - Research write-up (Phase 1g): Results before the run section is allowed. A README with no runnable command that reproduces a result is P1.
 - Hardware: a hazard the BOM, schematic, or code shows (mains voltage, lithium cells, motor current, logic-level mismatch) with no `> [!WARNING]` at the step where it arises is P1. The fix names the hazard and its evidence.
-- If install sits below an H2 about security, compatibility, requirements, or a threat model, do not propose moving it above that section. Report it as P2 with the reason, and offer the move only as an option the user picks by id.
+- If install sits below an H2 about security, compatibility, requirements, how it works, or a threat model (the Enhance Mode Step 3 safety exception), do not propose moving it above that section. Report it as P2 with the reason, and offer the move only as an option the user picks by id.
 
 **Structure**
-- Every MUST section for the type (Type-to-Template Mapping, plus the matrix in `category-templates.md`) is present. Missing MUST is P1. Respect Special Detection: no Contributing for solo or academic projects.
+- Every MUST section in the type's priority table in `category-templates.md` (Type-to-Template Mapping says which template a type uses) is present. Conditional MUSTs (a logo, docs, a BOM) count only when the condition holds. Missing MUST is P1. Respect Special Detection: no Contributing for solo or academic projects.
 - Missing SHOULD sections are P2, and only when the codebase supplies their content. Never propose padding to reach a Length Target; over-length fixes name the sections to cut or collapse.
 - One H1, no skipped heading levels, no duplicate or near-duplicate H2s.
 - TOC and navigation rule from Phase 3e: a TOC exists above 150 lines (Educational / Awesome always has a TOC or anchor nav block), and every TOC entry matches a heading. A TOC under its own H2 (`## Table of Contents`) is P2: the fix replaces that heading line with `**Contents**`. Don't also report it as a Run-first violation.
@@ -91,9 +91,9 @@ Check every item. Verify claims against the codebase with Read, Glob, and Grep; 
 - No feature text that exists only inside an image.
 
 **Writing**
-- Anti-AI Writing Rules: banned words, the 13 structural rules, the P0 and P1 checks, the portability test, voice register.
+- Anti-AI Writing Rules and `references/anti-ai-rules.md`: banned words, the 13 structural rules, the checker-P0 and checker-P1 checklist, the portability test, voice register.
 - Honest limits: when Phase 1k evidence shows an OS gate, a version upper bound, a one-platform dependency, or `NotImplementedError` / `unimplemented!()` / `todo!()` on a public path and the README is silent, propose a limitation built from that evidence, in the Phase 3b format. P2.
-- In human-authored sections, flag only P0 checks, banned words, and factual errors. Leave tone, humour, and sentence style alone.
+- In human-authored sections, flag only checker-P0 hits (banned words) and factual errors. Leave tone, humour, and sentence style alone.
 
 **Maintenance / drift**
 - At most 6 header badges. Dead badge hosts (`travis-ci.org`, `nodei.co`, `ci.appveyor.com`, `david-dm.org`) are P0. Static badges that imitate live status ("build passing", "maintained: yes") are P1. A CI badge must name a workflow file that exists.
@@ -111,13 +111,13 @@ python3 <skill-dir>/scripts/check-anti-ai.py --file <readme> --severity P2
 python3 <skill-dir>/scripts/validate-readme.py <readme> --type <slug> --verbosity <level> --dir <project-root>
 ```
 
-Keep the raw output and exit codes. These are the "before" results. If `python3` is unavailable, record "Scripts not run: python3 unavailable" and continue with A alone.
+Add `--early-stage` to the `validate-readme.py` run when Phase 1g flagged an Early-stage project. Keep the raw output and exit codes. These are the "before" results. If `python3` is unavailable, record "Scripts not run: python3 unavailable" and continue with A alone.
 
 ## Step 3: Synthesize
 
 1. Turn each script finding into a finding, or merge it into the matching A finding and add "(also flagged by `<script>`)" to its evidence.
 2. Dismiss script false positives (for example a bold-label hit on a list of named components under a heading the checker doesn't treat as a reference section) in the Not actioned list, with the reason.
-3. Assign severity:
+3. Assign severity. Critique P0-P2 is its own scale, not the checker's: checker-P0 and checker-P1 findings become critique P1, checker-P2 findings become P2, and `validate-readme.py` findings take the severity of the matching row below (a dead link is P0, a buried first command P1).
 
 | Severity | Meaning | Examples |
 |---|---|---|
@@ -163,7 +163,7 @@ Fix kinds: `replace Lx-Ly`, `insert after Lx`, `delete Lx-Ly [human]`, `move Lx-
 After the findings, add three short lists:
 - Not actioned: dismissed script findings and intentional skips (for example "no Contributing: solo project"), each with a one-line reason.
 - Unverified: claims you could not check, with what would confirm them.
-- Scripts (before): the check-anti-ai counts per severity and the validate-readme issue count.
+- Scripts (before): the checker-P0/P1/P2 counts and the validate-readme issue count.
 
 Last, ask one question. Use AskUserQuestion when available:
 
@@ -181,12 +181,12 @@ With no P0 or P1 findings, make "All findings" the recommended option. With no f
 - Otherwise copy the README to `/tmp/write-readme-critique/README.md` (and ARCHITECTURE.md to `/tmp/write-readme-critique/ARCHITECTURE.md` when a chosen fix targets it) and apply the chosen fixes there, from the highest line number to the lowest so earlier line numbers stay valid. Apply each fix as an exact replacement of its quoted old text. If the old text no longer matches (two fixes overlap), skip that fix and report it as skipped.
 - Change nothing outside the chosen fixes, with one exception: when a fix changes headings, regenerate an existing TOC and report it as "follow-on: TOC updated".
 - Re-run both Assessment B commands on the working copy. Keep `--dir <project-root>` so relative links resolve against the project, not `/tmp`.
-- If a fix introduced a new P0 or P1 script finding, correct the fix's own text and re-run. Never touch other text to clear it.
+- If a fix introduced a new checker-P0 or checker-P1 finding, correct the fix's own text and re-run. Never touch other text to clear it.
 
 Then show, in this order:
 1. Applied and skipped ids, with the reason for each skip.
 2. `diff -u <readme> /tmp/write-readme-critique/README.md`, the full unified diff, and the same for ARCHITECTURE.md when a fix touched it.
-3. A before/after table: check-anti-ai P0/P1/P2 counts and the validate-readme issue count.
+3. A before/after table: checker-P0/P1/P2 counts and the validate-readme issue count.
 4. The question "Write these changes to `<path>`?". Skip it if the user already approved writing in their selection (for example "apply all and write it").
 
 On approval, write the file and confirm: "`<path>` updated. <K> fixes applied." If git is initialized, note that `git diff` shows the change and `git checkout -- <path>` reverts it. If the user asks to adjust a fix, change only that fix, re-apply, and show the new diff and results.
