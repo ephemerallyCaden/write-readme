@@ -153,23 +153,24 @@ These are the only detection signals; Special Detection below says what to do wh
 
 **Solo project:** one contributor (counted as below), fewer than 5 stars when the count is known, and no CONTRIBUTING.md.
 
-Count contributors with this command from the project root. It reads `git shortlog -sne HEAD` (which applies `.mailmap`), drops bot authors (a name ending in `[bot]`, a `[bot]@` email, `noreply@github.com`), treats entries that share a name or an email (case-insensitive) as one person, and ignores anyone with under 10% of the remaining commits, such as a one-off demo commit. It prints the count; with no git history it prints 1.
+Count contributors with this command from the project root. It reads `git shortlog -sne HEAD` (which applies `.mailmap`), drops bot authors (a name ending in `[bot]`, a `[bot]@` email, `noreply@github.com`), treats entries that share a name or an email (case-insensitive) as one person, and ignores anyone with under 10% of the remaining commits, such as a one-off demo commit. It prints the count, a tab, and, when the count is 1, that contributor's name as spelled on most of their commits (the solo author). With no git history it prints 1 and no name.
 ```bash
 python3 - <<'EOF'
 import re, subprocess
 out = subprocess.run(["git", "shortlog", "-sne", "HEAD"], capture_output=True, text=True).stdout
-people = []  # [names, emails, commits]; entries sharing a name or an email are one person
+people = []  # [names, emails, commits, (commits, spelling)]; entries sharing a name or an email are one person
 for count, name, email in re.findall(r"^\s*(\d+)\t(.*?) <(.*)>$", out, re.M):
-    name, email = name.strip().lower(), email.strip().lower()
-    if name.endswith("[bot]") or "[bot]@" in email or email == "noreply@github.com":
+    key, email = name.strip().lower(), email.strip().lower()
+    if key.endswith("[bot]") or "[bot]@" in email or email == "noreply@github.com":
         continue
-    person = [{name}, {email}, int(count)]
+    person = [{key}, {email}, int(count), (int(count), name.strip())]
     for p in [p for p in people if p[0] & person[0] or p[1] & person[1]]:
-        person = [person[0] | p[0], person[1] | p[1], person[2] + p[2]]
+        person = [person[0] | p[0], person[1] | p[1], person[2] + p[2], max(person[3], p[3])]
         people.remove(p)
     people.append(person)
 total = sum(p[2] for p in people)
-print(sum(1 for p in people if p[2] * 10 >= total) if total else 1)
+kept = [p for p in people if p[2] * 10 >= total]
+print(len(kept) if total else 1, kept[0][3][1] if len(kept) == 1 else "", sep="\t")
 EOF
 ```
 
@@ -326,6 +327,12 @@ This repository has no license file, so default copyright applies: ask the autho
 ```
 If a manifest declares a license but no file exists (`license` in package.json, pyproject.toml, or Cargo.toml), the line names it instead: "MIT, as declared in `package.json`. The repository has no LICENSE file." The Phase 5 summary lists either case under Warnings.
 
+Picking MIT, Apache-2.0, or GPL-3.0 when no license file exists adds a second file: Phase 6 writes `LICENSE` at the project root beside README.md, and the License section names the license and links `LICENSE`. Only an explicit pick does this. Skip stays the default, and "go", Enter, or an unanswered block never picks a license on the user's behalf. When a license file already exists, a pick changes nothing: the file is never overwritten, the README names the existing license, and the Phase 5 summary warns that the pick was not applied. Build the file in `<draft-dir>/LICENSE` from the unmodified text in `<skill-dir>/references/licenses/` (`MIT.txt`, `Apache-2.0.txt`, `GPL-3.0.txt`), and fill placeholders only in that copy:
+- MIT: replace `[year]` with the current year (`date +%Y`) and `[fullname]` with the copyright holder.
+- Apache-2.0 and GPL-3.0: copy the text unchanged. Their `[yyyy] [name of copyright owner]` and `<year> <name of author>` fields sit in the closing "how to apply" notice, which Apache and the FSF say to fill in source-file headers, not in the license file.
+
+The copyright holder is the solo author's name that the Phase 1g contributor count prints, else `git config user.name`. If neither gives a name, the Phase 5 summary says so, and Phase 6 writes LICENSE only after the user names the holder.
+
 The ARCHITECTURE.md offer is never asked as a separate question. If the user picks Detailed here and the line wasn't shown, note in the Phase 5 summary that ARCHITECTURE.md is available on request (unless the project is Early-stage or one already exists).
 
 ### Verbosity levels
@@ -403,7 +410,7 @@ Before writing prose, read `references/anti-ai-rules.md`, and apply the Anti-AI 
    ```bash
    python3 <skill-dir>/scripts/generate-badges.py --owner <owner> --repo <repo> --license <SPDX id> --ci-workflow <file> --ecosystem <registry> --package <name>
    ```
-   Pass a flag only with real data behind it: `--license` only with a LICENSE file, `--ci-workflow` only for a file that exists in `.github/workflows/`, and `--ecosystem` with `--package` only when the package is published (they add the Version and Downloads badges). With none of those it prints no badge, and its stderr comment names each missing input; that is a normal result, not an error.
+   Pass a flag only with real data behind it: `--license` only with a LICENSE file (or the one Phase 6 will write), `--ci-workflow` only for a file that exists in `.github/workflows/`, and `--ecosystem` with `--package` only when the package is published (they add the Version and Downloads badges). With none of those it prints no badge, and its stderr comment names each missing input; that is a normal result, not an error.
 4. Add a Community badge by hand only when a Discord or Slack link exists.
 5. Add a static badge only when the Badges row of the type's priority table in `references/category-templates.md` names one (today only the Game template's engine badge does) or Special Detection adds one (the GitHub Pages badge), and only for a fact that doesn't change with the build: an engine, language, or platform. Add it whether or not steps 2-4 produced any badge. Build it as `![Unity 6000.0](https://img.shields.io/badge/Unity-6000.0-black?style=flat)`, with the value from Phase 1a. No template entry, no static badge.
 
@@ -489,7 +496,7 @@ The Run-first rule in Phase 3b overrides those orderings: wherever the template 
    `validate-readme.py` checks relative links and badge URLs, the first runnable step (past line 80 in standard and detailed, 50 in minimal; skipped for educational and dotfiles; with `--type game`, a numbered list in the first H2 that opens a scene or project and presses Play also counts), dead in-page anchors, duplicate H2s, header badges (at most 6), dead badge hosts and static badges imitating live status, placeholders outside comments and code, positional image references ("screenshot above"), license text against the LICENSE file, `style=` attributes, and the Phase 3f length range. Its first output line always gives the first runnable step's line. Flags:
    - `--type` takes a canonical type slug and rejects anything else. `--verbosity` sets the run-first and length limits; add `--early-stage` when Phase 1g flagged an Early-stage project, for the 30-60 range.
    - `--dir` must be the project root, not `<draft-dir>`: links and the LICENSE comparison resolve against it.
-   - `--expect PATH` (repeatable) names a file Phase 6 will create, so a link to it isn't reported broken. PATH is relative to the project root, never a `<draft-dir>` path. Pass `--expect ARCHITECTURE.md` when the companion file is being generated, and `--expect assets/screenshots/<file>` for each captured image the draft references (`<draft-dir>/assets/screenshots/hero.png` becomes `--expect assets/screenshots/hero.png`).
+   - `--expect PATH` (repeatable) names a file Phase 6 will create, so a link to it isn't reported broken. PATH is relative to the project root, never a `<draft-dir>` path. Pass `--expect ARCHITECTURE.md` when the companion file is being generated, `--expect LICENSE` when Phase 6 will write LICENSE (Phase 2b), and `--expect assets/screenshots/<file>` for each captured image the draft references (`<draft-dir>/assets/screenshots/hero.png` becomes `--expect assets/screenshots/hero.png`).
    - Length: over the maximum is an issue. Under the minimum prints a note and leaves the exit code alone; it needs no fix, because padding is worse (Phase 3f).
 3. Fix every P0 and P1 finding and re-run until the `--severity P1` check exits 0. The one exception is a finding on a documented rule exception: an emoji next to a brand or mascot name (rule 1), or a banned word inside a real name or identifier the README must quote (a package, product, or file name). Leave that text as it is and list it under "Warnings" in the Phase 5 summary with its reason; the gate is met when only such findings remain. P2 findings and `validate-readme.py` issues: fix, or list them under Warnings with a reason. If `python3` is unavailable, note that in Warnings and rely on step 1.
 
@@ -521,11 +528,12 @@ Sections: [list].
 Skipped: [list with reasons].
 Placeholders: [count and types].
 Captured: [paths to copy into the project, marking any that would overwrite a file] (only if Auto-capture ran).
+License file: LICENSE ([license], Copyright (c) [year] [holder]), a new file (only if Phase 6 will write it).
 Warnings: [any issues].
 Companion: ARCHITECTURE.md, [N] lines, [K] TODO markers (only if generated).
 ```
 
-If ARCHITECTURE.md was generated, present it in full after the README; one approval covers both files.
+If ARCHITECTURE.md was generated, present it in full after the README. A LICENSE that Phase 6 will write is listed in the summary, not shown in full, since its text is the standard license. One approval covers every file listed.
 
 Ask: "Want to change anything before I write this?"
 
@@ -533,13 +541,13 @@ The user can:
 - Approve ("looks good", "write it", "ship it") -- proceed to Phase 6
 - Request changes ("make the description shorter", "remove the tech stack table") -- apply, show updated, ask again
 - Request different verbosity ("make it minimal") -- regenerate, show, ask again
-- Abort ("cancel", "nevermind") -- nothing is written to the project; `<draft-dir>` and its captures are left behind, and the reply gives its path
+- Abort ("cancel", "nevermind") -- nothing is written to the project, neither README.md nor LICENSE; `<draft-dir>` and its captures are left behind, and the reply gives its path
 
 Loop until approved or aborted. After the first pass, apply only the specific requested change; do not re-present the full options block.
 
 ## Phase 6: WRITE
 
-Write README.md to the project root, and ARCHITECTURE.md beside it if it was generated. Copy each captured image the README references from `<draft-dir>/assets/` to the same path under the project root, creating directories as needed; the Phase 5 approval covers any overwrite it listed. Confirm: "README.md written. [N] lines." (plus the ARCHITECTURE.md line count and the copied image paths).
+Write README.md to the project root, ARCHITECTURE.md beside it if it was generated, and LICENSE from `<draft-dir>/LICENSE` if Phase 2b called for one (never over an existing file). Copy each captured image the README references from `<draft-dir>/assets/` to the same path under the project root, creating directories as needed; the Phase 5 approval covers any overwrite it listed. Confirm: "README.md written. [N] lines." (plus the ARCHITECTURE.md line count, "LICENSE written ([license])." when one was, and the copied image paths).
 
 If an existing README was replaced, note that the old version can be recovered via git (if git is initialized).
 
