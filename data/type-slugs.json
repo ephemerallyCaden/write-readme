@@ -1,127 +1,141 @@
 {
+  "dotfiles": {
+    "template": "dotfiles",
+    "name": "Personal config / dotfiles",
+    "priority": 1,
+    "target_lines": [30, 200],
+    "screenshot_priority": "COULD"
+  },
+  "hardware": {
+    "template": "hardware",
+    "name": "Hardware / Embedded",
+    "priority": 2,
+    "target_lines": [100, 400],
+    "screenshot_priority": "SHOULD"
+  },
   "game": {
     "template": "game",
     "name": "Game / Interactive",
-    "priority": 1,
+    "priority": 3,
     "target_lines": [100, 400],
     "screenshot_priority": "MUST"
   },
   "visual": {
     "template": "visual-output",
     "name": "Visual Output / CV",
-    "priority": 2,
+    "priority": 4,
     "target_lines": [150, 500],
     "screenshot_priority": "MUST"
   },
   "gen-ai": {
     "template": "visual-output",
     "name": "Generative AI",
-    "priority": 3,
+    "priority": 5,
     "target_lines": [150, 500],
     "screenshot_priority": "MUST"
   },
   "bot": {
     "template": "bot",
     "name": "Bot",
-    "priority": 4,
+    "priority": 6,
     "target_lines": [140, 400],
     "screenshot_priority": "COULD"
   },
   "browser-ext": {
     "template": "browser-extension",
     "name": "Browser Extension",
-    "priority": 5,
+    "priority": 7,
     "target_lines": [80, 400],
     "screenshot_priority": "SHOULD"
   },
   "mobile": {
     "template": "mobile-app",
     "name": "Mobile App",
-    "priority": 6,
+    "priority": 8,
     "target_lines": [150, 350],
     "screenshot_priority": "MUST"
   },
   "desktop": {
     "template": "desktop-app",
     "name": "Desktop Application",
-    "priority": 7,
+    "priority": 9,
     "target_lines": [100, 350],
     "screenshot_priority": "MUST"
   },
   "tui": {
     "template": "cli",
     "name": "TUI Application",
-    "priority": 8,
+    "priority": 10,
     "target_lines": [200, 1200],
     "screenshot_priority": "MUST"
   },
   "docs-site": {
     "template": "docs-site",
     "name": "Documentation Site / SSG",
-    "priority": 9,
+    "priority": 11,
     "target_lines": [60, 200],
     "screenshot_priority": "SHOULD"
   },
   "web-app": {
     "template": "web-app",
     "name": "Web Application",
-    "priority": 10,
+    "priority": 12,
     "target_lines": [100, 300],
     "screenshot_priority": "MUST"
   },
   "api": {
     "template": "api",
     "name": "API / Backend Service",
-    "priority": 11,
+    "priority": 13,
     "target_lines": [100, 350],
     "screenshot_priority": "COULD"
   },
   "cli": {
     "template": "cli",
     "name": "CLI Tool",
-    "priority": 12,
+    "priority": 14,
     "target_lines": [200, 1200],
     "screenshot_priority": "MUST"
   },
   "framework": {
     "template": "framework",
     "name": "Framework",
-    "priority": 13,
+    "priority": 15,
     "target_lines": [100, 300],
     "screenshot_priority": "COULD"
   },
   "ml": {
     "template": "ml",
     "name": "ML/AI Model",
-    "priority": 14,
+    "priority": 16,
     "target_lines": [200, 800],
     "screenshot_priority": "COULD"
   },
   "devops": {
     "template": "devops",
     "name": "DevOps / Infrastructure",
-    "priority": 15,
+    "priority": 17,
     "target_lines": [80, 300],
     "screenshot_priority": "COULD"
   },
   "educational": {
     "template": "educational",
     "name": "Educational / Awesome",
-    "priority": 16,
+    "priority": 18,
     "target_lines": [500, 3000],
     "screenshot_priority": "COULD"
   },
   "library": {
     "template": "library",
     "name": "Library / Package",
-    "priority": 17,
+    "priority": 19,
     "target_lines": [50, 400],
     "screenshot_priority": "COULD"
   },
   "other": {
     "template": "other",
     "name": "Other / Unknown",
-    "priority": 18,
+    "priority": 20,
     "target_lines": [80, 300],
     "screenshot_priority": "COULD"
   }
