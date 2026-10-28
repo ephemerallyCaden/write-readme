@@ -246,7 +246,7 @@ The ARCHITECTURE.md offer lives only in this block. It has a default (Skip), so 
 
 ### 3a. Select template
 
-Pick the template matching the detected type (see Type-to-Template Mapping below).
+Read the detected type's entry in `references/category-templates.md` (relative to this skill's base directory): its section ordering and its priority table. That table defines MUST, SHOULD, and COULD for the type, and every use of those words in this file means the table's value (see Type-to-Template Mapping below).
 
 ### 3b. Generate section by section
 
@@ -335,62 +335,9 @@ If over: trim COULD sections first; in detailed mode, move reference material in
 
 ## Type-to-Template Mapping
 
-These lists set which sections each type gets. Placement of the run section (Install, Quick Start, Getting Started, Download table, store links, Demo link + self-host, One-line scaffold) is governed by the Run-first rule in Phase 3b, which overrides the order shown here. Prerequisites and requirements listed below fold into the run section as its first line; longer hardware or platform tables can stay as later sections. Limitations, Privacy, and Comparison can appear in any type; Phase 3b says when and where.
+Each type's sections, their order, and their MUST/SHOULD/COULD priorities come from its entry in `references/category-templates.md`. TUI Application uses the CLI Tool template and Generative AI the Visual Output / CV template; the Research write-up modifier there applies on top of the detected type.
 
-**Web Application:**
-Title+Logo, Badges, Nav links, Description, `<!-- screenshot:hero -->`, Features, Demo link, Install (Docker-first), Config, Architecture, Docs, Contributing, Community, Sponsors, License
-
-**CLI Tool:**
-Title+Logo, Badges, Description, `<!-- screenshot:hero | format=gif -->`, TOC (if >150 lines), Install (multi-platform), Quick Start, Usage Examples, Command Reference, Config, Shell Integration, FAQ, Contributing, License
-
-**Library / Package:**
-Title+Logo, Badges, Description, Code Example (10 lines or fewer, may precede the install line inside the first H2), Features, Install, Quick Start, Usage (progressive), API/Docs link, Benchmarks, Sponsors, Contributing, License
-
-**Framework:**
-Title+Logo, Badges, Tagline, Description, Features/Why, Quick Start (scaffold command), Install, Docs, Ecosystem/Plugins, Migration, Community, Contributing, License
-
-**Game / Interactive:**
-Title+Logo, Badges, `<!-- screenshot:hero | format=gif -->`, Description, Features, Download/Play (binaries), How to Play/Controls, Install from source, Modding, Community, Contributing, Credits, License
-
-**Visual Output / CV:**
-Title+Logo, Badges, `<!-- screenshot:hero | description=Visual results demo -->`, Description, Features/Tasks, Model Performance table, Install (GPU reqs), Quick Start (CLI+Python), Supported Models, Architecture, Hardware Requirements, Citation/BibTeX, Contributing, License
-
-**ML/AI Model:**
-Title+Logo, Badges, Description, Architecture diagram, Supported Models table, Install (GPU), Quick Start, Usage (inference+training), Model Card, Training, Evaluation/Benchmarks, Citation/BibTeX, Contributing, License
-
-**Desktop Application:**
-Title+Logo, Badges, Tagline, `<!-- screenshot:hero -->`, Features, Download table (multi-store), Platform Compatibility, Setup/Config, Docs, Troubleshooting, Build from source, Contributing, License
-
-**DevOps / Infrastructure:**
-Title+Logo, Badges, Description, Architecture diagram, Features, Getting Started, Install (binary/Docker/Helm/source), Config, Docs, Governance, Contributing, Security, License
-
-**Educational / Awesome:**
-Title, Badges, Description, TOC or anchor nav block (mandatory, Phase 3e), Content sections by topic, Contributing, License
-
-**Browser Extension:**
-Title+Icon, Badges, Description, `<!-- screenshot:hero -->`, Install (per-browser store links), Supported Browsers, Features, Keyboard Shortcuts, Permissions/Privacy, Build from source, Contributing, License
-
-**API / Backend Service:**
-Title+Logo, Badges, Tagline, Quick Start code, Features, Architecture/Request flow, Install, Docs, Client Libraries/SDK table, API Reference, Deploy/Self-host, Config, Security, Contributing, License
-
-**Mobile App:**
-Title+Icon, Badges, Description, `<!-- screenshot:hero | description=Device screenshots -->`, Features, Download table (per-platform stores), Platform Compatibility, Docs, Translation/Localization, Build from source, Contributing, License
-
-**Documentation Site / SSG:**
-Title+Logo, Badges, Tagline, `<!-- screenshot:hero | description=Generated output -->`, Features, One-line scaffold, Docs, Showcase/"Trusted by", Deploy buttons, Contributing, License
-
-**Bot:**
-Title+Avatar, Tagline, Badges, Description, Features/Commands, Quick Start (bot registration as the prerequisite, then token, config, run), Config (.env), Commands reference, Plugins/Cogs, Docker, Contributing, License
-
-**Personal config / dotfiles:**
-Title, Description (whose setup, which OS and tools), What this repo is (and isn't), Browse index (table of path and what it configures), `<!-- screenshot:hero | description=Desktop or editor with this config applied | priority=COULD -->`, Apply (only when the repo ships an installer or a stow, chezmoi, or dotbot config), Credits (configs it borrows from), License
-
-**Hardware / Embedded:**
-Title, Badges, Description (what the device does, board or MCU), `<!-- screenshot:hero | description=Photo of the assembled device | priority=SHOULD -->`, Getting Started (build and flash), Bill of Materials (table from `BOM.csv`), Wiring (pin table from the pin definitions in code, schematic image, and a `> [!WARNING]` at each step where the BOM or code shows a hazard), Assembly, Firmware config, PCB (KiCad sources and fab outputs), Contributing, License (hardware and firmware licenses can differ)
-
-**Other / Unknown:**
-Title, Badges, Description, Features, Install, Quick Start, Docs, Contributing, License
-(Add/remove sections based on codebase analysis. This is the minimal safe default.)
+The Run-first rule in Phase 3b overrides those orderings: wherever the template lists the run section (Install, Quick Start, Getting Started, Download table, store links, Demo link + self-host, One-line scaffold), it becomes the first H2. Prerequisites and requirements fold into the run section as its first line; longer hardware or platform tables can stay as later sections. Limitations, Privacy, and Comparison can appear in any type; Phase 3b says when and where.
 
 ## Phase 4: VERIFY
 

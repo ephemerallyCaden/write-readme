@@ -1,10 +1,17 @@
 # Category-Specific README Structure Templates
 
-> 17 project types, 45+ repos analyzed. Each template defines section ordering, MUST/SHOULD/COULD priorities, above-the-fold content, ideal length, and unique sections.
+> 18 templates for the 20 project types in SKILL.md Phase 1b, from 45+ repos analyzed. TUI Application uses the CLI Tool template; Generative AI uses the Visual Output / CV template. Each template gives a section ordering and a priority table.
 
-> **Ordering override:** SKILL.md Phase 3b's Run-first rule wins over the orderings below. The run section is always the first H2; only the title, badges, description (≤2 sentences, plus an optional router line), hero image, nav row, and TOC come before it. What counts as the run section depends on the type: install + run command for most types, a scaffold command for Frameworks and Docs Sites, a download table or store badges for Desktop, Mobile, and Browser Extension, and a hosted URL or deploy button followed by self-host commands for Web Apps, APIs, and hosted Docs Sites, and the build-and-flash command for Hardware. Prerequisites go inside the run section as its first line. A research write-up may put Results before the run section. Educational / Awesome lists, personal config / dotfiles repos, and ARCHITECTURE.md are exempt.
+> **Ordering override:** SKILL.md Phase 3b's Run-first rule wins over the orderings below. Read it there.
 
 > **Evidence-only sections (every type):** Limitations, Privacy, and Comparison are not listed per template. SKILL.md Phase 3b says when each appears and where it goes. Architecture rows below follow the Phase 3b cap: in standard mode, one Mermaid diagram, 2-4 sentences, and a link.
+
+> **Priorities.** Each template's priority table is authoritative for its type; the Cross-Category Section Matrix is a summary. SKILL.md uses MUST, SHOULD, and COULD with these meanings:
+> - MUST: include it (minimal and early-stage projects include only the sections SKILL.md lists for them). A MUST with a condition ("MUST when `BOM.csv` exists") applies only when the condition holds.
+> - SHOULD: include it in standard and detailed when the codebase supplies the content.
+> - COULD: include it in detailed, or in standard only when the content already exists (an existing README section, `docs/`).
+> - Title+Logo, Title+Icon, Title+Avatar: the title is always MUST; the image only when the repo has one (Phase 1j). Docs and API/Docs link rows marked MUST apply only when docs exist (a docs URL in the manifest or repo, or a `docs/` directory). With no logo or docs, leave it out; it is not a missing section.
+> - Screenshot positions are the `<!-- screenshot:... -->` entries in an ordering. Their priority is the screenshot row of the priority table, or the `priority=` value in the placeholder.
 
 ---
 
@@ -25,36 +32,38 @@
 | **Browser Extension** | Per-browser install links, Supported Browsers, Permissions/Privacy, Key bindings |
 | **API / Backend Service** | Client Libraries/SDK table, Request flow diagram, API Reference link |
 | **Mobile App** | Device screenshots, Store badges, Platform compatibility, Translation/Localization |
-| **Documentation Site / SSG** | Generated output screenshot, Deploy buttons, Showcase/"Trusted by" |
+| **Documentation Site / SSG** | Generated output screenshot, Deploy buttons, Built with <name>/"Trusted by" |
 | **Bot** | Bot registration steps, Commands reference, Token/config setup, Plugins/Cogs |
 | **Personal config / dotfiles** | What this repo is (and isn't), Browse index, Apply step (only with an installer) |
 | **Hardware / Embedded** | Bill of Materials table, Wiring/pin table, Safety callouts, PCB files |
+| **Other / Unknown** | None: the minimal safe default |
 
 ---
 
-## Ideal Length Summary
+## Documentation Model
 
-Standard-mode ranges. SKILL.md Phase 3f sets the minimal, early-stage, and detailed ranges, which win over this table. Add sections to reach the floor only when the codebase supplies their content.
+Line ranges live in SKILL.md "Length Targets" and Phase 3f, not here.
 
-| Category | Lines | Model |
-|---|---|---|
-| Web Application | 50-300 | Hub-and-spoke |
-| CLI Tool | 60-500 (detailed: up to 1200) | README as docs |
-| Library / Package | 40-400 | Hub-and-spoke to comprehensive |
-| Framework | 60-300 | Hub-and-spoke |
-| Game / Interactive | 100-400 | Moderate, visual-heavy |
-| Visual Output / CV | 150-500 | Visual + tables |
-| ML/AI Model | 200-800 | Comprehensive |
-| Desktop Application | 100-350 | Visual + download-heavy |
-| DevOps / Infrastructure | 80-300 | Hub-and-spoke |
-| Educational / Awesome | 500-3000+ | Content IS README |
-| Browser Extension | 80-400 | Moderate |
-| API / Backend Service | 100-350 | Code-first hub-and-spoke |
-| Mobile App | 150-350 | Visual + download-heavy |
-| Documentation Site / SSG | 60-200 | Ultra-hub-and-spoke |
-| Bot | 140-400 | Setup-heavy |
-| Personal config / dotfiles | 30-200 | Browse index |
-| Hardware / Embedded | 100-400 | Setup-heavy, photo-heavy |
+| Category | Model |
+|---|---|
+| Web Application | Hub-and-spoke |
+| CLI Tool | README as docs |
+| Library / Package | Hub-and-spoke, or full docs in the README when there is no docs site |
+| Framework | Hub-and-spoke |
+| Game / Interactive | Moderate, visual-heavy |
+| Visual Output / CV | Visual + tables |
+| ML/AI Model | Full reference in the README |
+| Desktop Application | Visual + download-heavy |
+| DevOps / Infrastructure | Hub-and-spoke |
+| Educational / Awesome | Content IS README |
+| Browser Extension | Moderate |
+| API / Backend Service | Code-first hub-and-spoke |
+| Mobile App | Visual + download-heavy |
+| Documentation Site / SSG | Ultra-hub-and-spoke |
+| Bot | Setup-heavy |
+| Personal config / dotfiles | Browse index |
+| Hardware / Embedded | Setup-heavy, photo-heavy |
+| Other / Unknown | Minimal safe default |
 
 ---
 
@@ -71,11 +80,11 @@ Standard-mode ranges. SKILL.md Phase 3f sets the minimal, early-stage, and detai
 | Install | MUST | MUST | MUST | MUST | SHOULD | MUST | MUST | MUST | MUST | -- | MUST | MUST | MUST | MUST | MUST | COULD | MUST |
 | Quick Start | MUST | MUST | MUST | MUST | -- | MUST | MUST | -- | MUST | -- | -- | MUST | -- | MUST | MUST | -- | SHOULD |
 | Docs link | MUST | COULD | MUST | MUST | SHOULD | MUST | MUST | SHOULD | MUST | -- | COULD | MUST | SHOULD | MUST | SHOULD | -- | COULD |
-| TOC | COULD | MUST* | COULD | COULD | COULD | COULD | COULD | COULD | COULD | MUST | COULD | COULD | COULD | -- | COULD | COULD | COULD |
+| TOC | MUST* | MUST* | MUST* | MUST* | MUST* | MUST* | MUST* | MUST* | MUST* | MUST | MUST* | MUST* | MUST* | MUST* | MUST* | MUST* | MUST* |
 | Contributing | MUST | SHOULD | SHOULD | MUST | SHOULD | SHOULD | SHOULD | MUST | MUST | MUST | SHOULD | MUST | MUST | MUST | SHOULD | -- | SHOULD |
 | License | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST |
 
-*MUST if over 150 lines. Dot = Personal config / dotfiles, HW = Hardware / Embedded. Dotfiles Install means an Apply step, only when the repo ships an installer. The Hardware screenshot is a device photo, which can't be auto-captured.
+*MUST when the README is over 150 lines (SKILL.md Phase 3e); it is a `**Contents**` list, not an H2. Logo/Banner and Docs link MUST only when a logo or docs exist (Priorities, above). Dot = Personal config / dotfiles, HW = Hardware / Embedded. Dotfiles Install means an Apply step, only when the repo ships an installer. The Hardware screenshot is a device photo, which can't be auto-captured.
 
 ---
 
@@ -107,7 +116,6 @@ Title+Logo, Badges, Nav links, Description, `<!-- screenshot:hero -->`, Features
 | Sponsors | COULD | Tiered sponsor logos |
 | License | MUST | Type + link |
 
-**Ideal length:** 50-300 lines
 **Model:** Hub-and-spoke (README is landing page, docs site has depth)
 
 ---
@@ -115,7 +123,7 @@ Title+Logo, Badges, Nav links, Description, `<!-- screenshot:hero -->`, Features
 ### 2. CLI Tool
 
 **Section ordering:**
-Title+Logo, Badges, Description, `<!-- screenshot:hero | format=gif -->`, TOC (if >150 lines), Install (multi-platform), Quick Start, Usage Examples, Command Reference, Config, Shell Integration, FAQ, Contributing, License
+Title+Logo, Badges, Description, `<!-- screenshot:hero | format=gif -->`, TOC (`**Contents**` list, if >150 lines), Install (multi-platform), Quick Start, Usage Examples, Command Reference, Config, Shell Integration, FAQ, Contributing, License
 
 **Section priorities:**
 
@@ -125,7 +133,7 @@ Title+Logo, Badges, Description, `<!-- screenshot:hero | format=gif -->`, TOC (i
 | Badges | SHOULD | |
 | Description | MUST | What it does, what it replaces |
 | Screenshot (GIF) | MUST | Animated demo of core command |
-| TOC | MUST* | *Required if >150 lines |
+| TOC | MUST* | *Required if >150 lines; a `**Contents**` list, not an H2 (SKILL.md Phase 3e) |
 | Install (multi-platform) | MUST | Homebrew, apt, cargo, pip, npm, binary |
 | Quick Start | MUST | One command that shows value |
 | Usage Examples | SHOULD | Progressive: basic, intermediate, piped |
@@ -136,7 +144,6 @@ Title+Logo, Badges, Description, `<!-- screenshot:hero | format=gif -->`, TOC (i
 | Contributing | SHOULD | |
 | License | MUST | |
 
-**Ideal length:** 60-500 lines (detailed: up to 1200)
 **Model:** README as docs (CLI tools often have no docs site)
 
 ---
@@ -164,8 +171,7 @@ Title+Logo, Badges, Description, Code Example (before install, inside the first 
 | Contributing | SHOULD | |
 | License | MUST | |
 
-**Ideal length:** 40-400 lines
-**Model:** Hub-and-spoke (with docs site) or comprehensive (without)
+**Model:** Hub-and-spoke (with docs site), or full docs in the README (without)
 
 ---
 
@@ -185,14 +191,13 @@ Title+Logo, Badges, Tagline, Description, Features/Why, Quick Start (scaffold co
 | Features/Why | SHOULD | What it does differently, stated as facts about this framework. Comparisons with named alternatives follow the Comparison rule (SKILL.md Phase 3b) |
 | Quick Start | MUST | Scaffold command that gets a project running |
 | Install | MUST | |
-| Docs | MUST | Link to comprehensive docs |
+| Docs | MUST | Link to the full docs |
 | Ecosystem/Plugins | SHOULD | Available integrations |
 | Migration | COULD | From previous versions (CHANGELOG or docs/), or from another framework only when docs/ has that guide |
 | Community | SHOULD | |
 | Contributing | MUST | |
 | License | MUST | |
 
-**Ideal length:** 60-300 lines
 **Model:** Hub-and-spoke (framework docs are always external)
 
 ---
@@ -220,7 +225,6 @@ Title+Logo, Badges, `<!-- screenshot:hero | format=gif -->`, Description, Featur
 | Credits | COULD | Art, music, sound attributions |
 | License | MUST | |
 
-**Ideal length:** 100-400 lines
 **Model:** Moderate, visual-heavy
 
 ---
@@ -249,7 +253,6 @@ Title+Logo, Badges, `<!-- screenshot:hero | description=Visual results demo -->`
 | Contributing | SHOULD | |
 | License | MUST | |
 
-**Ideal length:** 150-500 lines
 **Model:** Visual + tables
 
 ---
@@ -278,8 +281,7 @@ Title+Logo, Badges, Description, Architecture diagram, Supported Models table, I
 | Contributing | SHOULD | |
 | License | MUST | |
 
-**Ideal length:** 200-800 lines
-**Model:** Comprehensive
+**Model:** Full reference in the README
 
 ---
 
@@ -306,7 +308,6 @@ Title+Logo, Badges, Tagline, `<!-- screenshot:hero -->`, Features, Download tabl
 | Contributing | MUST | |
 | License | MUST | |
 
-**Ideal length:** 100-350 lines
 **Model:** Visual + download-heavy
 
 ---
@@ -328,13 +329,12 @@ Title+Logo, Badges, Description, Architecture diagram, Features, Getting Started
 | Getting Started | MUST | Quickest path to running |
 | Install | MUST | Binary, Docker, Helm, source |
 | Config | SHOULD | YAML/HCL configuration examples |
-| Docs | MUST | Link to comprehensive docs |
+| Docs | MUST | Link to the full docs |
 | Governance | COULD | Project governance model |
 | Contributing | MUST | |
 | Security | SHOULD | Security policy, reporting |
 | License | MUST | |
 
-**Ideal length:** 80-300 lines
 **Model:** Hub-and-spoke
 
 ---
@@ -356,7 +356,6 @@ Title, Badges, Description, TOC or anchor nav block (mandatory), Content section
 | Contributing | MUST | Guidelines for adding content |
 | License | MUST | |
 
-**Ideal length:** 500-3000+ lines
 **Model:** Content IS README -- no external docs, the README is the product
 
 ---
@@ -383,7 +382,6 @@ Title+Icon, Badges, Description, `<!-- screenshot:hero -->`, Install (per-browse
 | Contributing | SHOULD | |
 | License | MUST | |
 
-**Ideal length:** 80-400 lines
 **Model:** Moderate
 
 ---
@@ -413,7 +411,6 @@ Title+Logo, Badges, Tagline, Quick Start code, Features, Architecture/Request fl
 | Contributing | MUST | |
 | License | MUST | |
 
-**Ideal length:** 100-350 lines
 **Model:** Code-first hub-and-spoke
 
 ---
@@ -440,7 +437,6 @@ Title+Icon, Badges, Description, `<!-- screenshot:hero | description=Device scre
 | Contributing | MUST | |
 | License | MUST | |
 
-**Ideal length:** 150-350 lines
 **Model:** Visual + download-heavy
 
 ---
@@ -448,7 +444,7 @@ Title+Icon, Badges, Description, `<!-- screenshot:hero | description=Device scre
 ### 14. Documentation Site / SSG
 
 **Section ordering:**
-Title+Logo, Badges, Tagline, `<!-- screenshot:hero | description=Generated output -->`, Features, One-line scaffold, Docs, Showcase/"Trusted by", Deploy buttons, Contributing, License
+Title+Logo, Badges, Tagline, `<!-- screenshot:hero | description=Generated output -->`, Features, One-line scaffold, Docs, Built with <name>/"Trusted by", Deploy buttons, Contributing, License
 
 **Section priorities:**
 
@@ -461,12 +457,11 @@ Title+Logo, Badges, Tagline, `<!-- screenshot:hero | description=Generated outpu
 | Features | SHOULD | Key differentiators |
 | One-line scaffold | MUST | npx/pip create command |
 | Docs | MUST | Link to the docs site (which is itself a demo) |
-| Showcase/"Trusted by" | COULD | Sites built with this tool |
+| Built with <name>/"Trusted by" | COULD | Sites built with this tool, only ones the repo or docs list |
 | Deploy buttons | COULD | Vercel, Netlify, Cloudflare Pages one-click |
 | Contributing | MUST | |
 | License | MUST | |
 
-**Ideal length:** 60-200 lines
 **Model:** Ultra-hub-and-spoke (the docs site IS the product demo)
 
 ---
@@ -494,7 +489,6 @@ Title+Avatar, Tagline, Badges, Description, Features/Commands, Quick Start (bot 
 | Contributing | SHOULD | |
 | License | MUST | |
 
-**Ideal length:** 140-400 lines
 **Model:** Setup-heavy (bot registration is the hard part)
 
 ---
@@ -519,7 +513,6 @@ Run-first exempt: the README is a browse index, and most readers copy one file r
 | Credits | COULD | Configs it borrows from, only when files or comments name them |
 | License | MUST | One line |
 
-**Ideal length:** 30-200 lines
 **Model:** Browse index. Home Assistant configs often add an automations index (automation file, then what it does).
 
 ---
@@ -547,8 +540,32 @@ Title, Badges, Description, `<!-- screenshot:hero | description=Photo of the ass
 | Contributing | SHOULD | |
 | License | MUST | Hardware and firmware may carry different licenses (CERN-OHL, MIT); read every LICENSE file |
 
-**Ideal length:** 100-400 lines
 **Model:** Setup-heavy (parts, wiring, flashing), photo-heavy
+
+---
+
+### 18. Other / Unknown
+
+**Section ordering:**
+Title, Badges, Description, Features, Install, Quick Start, Docs, Contributing, License
+
+Add or remove sections based on what the codebase supplies. This is the minimal safe default.
+
+**Section priorities:**
+
+| Section | Priority | Notes |
+|---|---|---|
+| Title | MUST | |
+| Badges | SHOULD | 0-6, only with real data |
+| Description | MUST | What it does, inferred from the code when there is no manifest description |
+| Features | SHOULD | Only features the code shows |
+| Install | MUST | |
+| Quick Start | MUST | The command that runs it |
+| Docs | SHOULD | Link to `docs/` or a docs site if one exists |
+| Contributing | SHOULD | |
+| License | MUST | |
+
+**Model:** Minimal safe default
 
 ---
 
