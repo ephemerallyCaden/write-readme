@@ -67,6 +67,7 @@
     "name": "TUI Application",
     "priority": 10,
     "target_lines": [60, 500],
+    "detailed_max": 1200,
     "screenshot_priority": "MUST"
   },
   "docs-site": {
@@ -95,6 +96,7 @@
     "name": "CLI Tool",
     "priority": 14,
     "target_lines": [60, 500],
+    "detailed_max": 1200,
     "screenshot_priority": "MUST"
   },
   "framework": {

@@ -20,9 +20,14 @@ APACHE_TEXT = "                                 Apache License\n                
 
 
 def groups_for(content: str, project_type: str | None = None, verbosity: str | None = None,
-               base_dir: str = ".") -> dict[str, list[str]]:
-    groups, _ = vr.run_checks(content, project_type, verbosity, base_dir)
+               base_dir: str = ".", **kwargs) -> dict[str, list[str]]:
+    groups, _, _ = vr.run_checks(content, project_type, verbosity, base_dir, **kwargs)
     return dict(groups)
+
+
+def notes_for(content: str, project_type: str | None = None, verbosity: str | None = None,
+              base_dir: str = ".", **kwargs) -> list[str]:
+    return vr.run_checks(content, project_type, verbosity, base_dir, **kwargs)[2]
 
 
 def padding(n: int) -> str:
@@ -40,6 +45,26 @@ class RelativeLinkTests(unittest.TestCase):
         content = ('# T\n\n[l](LICENSE) [s](scripts/) [a](#t) [m](mailto:a@b.c)\n'
                    '<img src="assets/banner.png" alt="b"> [u](https://x.dev/none.md)\n')
         self.assertNotIn("Broken links", groups_for(content, base_dir=REPO))
+
+    def test_leading_slash_is_repo_root(self):
+        content = "# T\n\n[l](/LICENSE) ![b](/assets/banner.png) [x](/docs/missing.md)\n"
+        findings = groups_for(content, base_dir=REPO)["Broken links"]
+        self.assertEqual(len(findings), 1)
+        self.assertIn("/docs/missing.md", findings[0])
+
+    def test_expect_paths_count_as_existing(self):
+        content = ("# T\n\n[a](ARCHITECTURE.md) ![s](assets/screenshots/main.png) "
+                   "![t](/assets/screenshots/sub/x.gif) [n](NOTES.md)\n")
+        findings = groups_for(content, base_dir=REPO,
+                              expect=["ARCHITECTURE.md", "assets/screenshots/"])["Broken links"]
+        self.assertEqual(len(findings), 1)
+        self.assertIn("NOTES.md", findings[0])
+
+    def test_expect_is_not_a_prefix_match(self):
+        content = "# T\n\n[a](ARCHITECTURE.md.bak) ![s](assets/screenshots-old/a.png)\n"
+        findings = groups_for(content, base_dir=REPO,
+                              expect=["ARCHITECTURE.md", "assets/screenshots"])["Broken links"]
+        self.assertEqual(len(findings), 2)
 
 
 class RunFirstTests(unittest.TestCase):
@@ -67,6 +92,55 @@ class RunFirstTests(unittest.TestCase):
         badge = "# T\n\n[![v](https://img.shields.io/github/v/release/o/r)](https://github.com/o/r/releases)\n"
         self.assertIsNone(self.first(badge))
 
+    def test_deploy_buttons_count(self):
+        for url in ["https://heroku.com/deploy?template=https://github.com/o/r",
+                    "https://vercel.com/new/clone?repository-url=https://github.com/o/r",
+                    "https://app.netlify.com/start/deploy?repository=https://github.com/o/r",
+                    "https://render.com/deploy?repo=https://github.com/o/r",
+                    "https://railway.app/new/template/abc"]:
+            with self.subTest(url=url):
+                content = f"# T\n\n[![Deploy](https://example.com/button.svg)]({url})\n"
+                self.assertEqual(self.first(content), (3, "deploy button"))
+
+    def test_hosted_demo_links_count(self):
+        for line in ["[Live demo](https://app.example.com)", "[Demo](https://app.example.com)",
+                     "[Try it online](https://app.example.com)", "[Open app](https://app.example.com)",
+                     "[![Demo](https://img.shields.io/badge/demo-online-blue)](https://app.example.com)",
+                     "Live demo: https://app.example.com", "- **Try it:** <https://app.example.com>"]:
+            with self.subTest(line=line):
+                self.assertEqual(self.first(f"# T\n\n{line}\n"), (3, "hosted demo link"))
+
+    def test_other_links_are_not_hosted_demos(self):
+        for line in ["[Demo video](https://youtube.com/watch?v=x)", "[Docs](https://docs.example.com)",
+                     "[Demo](docs/demo.md)", "[Live reload](https://example.com/live-reload)",
+                     "The demo lives at the bottom of the page."]:
+            with self.subTest(line=line):
+                self.assertIsNone(self.first(f"# T\n\n{line}\n"))
+
+    def test_firmware_commands_count(self):
+        self.assertEqual(self.first("# T\n\n```\npio run -t upload\n```\n")[0], 3)
+        self.assertEqual(self.first("# T\n\n```\narduino-cli upload -p /dev/ttyUSB0\n```\n")[0], 3)
+
+    def test_board_only_hardware_is_a_note(self):
+        content = "# T\n\nA KiCad board. Order it from any fab.\n"
+        with tempfile.TemporaryDirectory() as board:
+            open(os.path.join(board, "board.kicad_pcb"), "w").close()
+            self.assertNotIn("Run-first", groups_for(content, "hardware", base_dir=board))
+            self.assertIn("board-only", notes_for(content, "hardware", base_dir=board)[0])
+        with tempfile.TemporaryDirectory() as fw:
+            open(os.path.join(fw, "platformio.ini"), "w").close()
+            self.assertIn("Run-first", groups_for(content, "hardware", base_dir=fw))
+
+    def test_toc_lines_not_counted(self):
+        toc = "**Contents**\n\n" + "".join(f"- [S{i}](#s{i})\n" for i in range(30))
+        content = "# T\n\n" + padding(60) + toc + "\n```bash\nmake\n```\n" + \
+            "".join(f"## S{i}\n" for i in range(30))
+        self.assertNotIn("Run-first", groups_for(content, "cli", "standard"))
+        without = content.replace("**Contents**", "Sections")
+        self.assertIn("Run-first", groups_for(without, "cli", "standard"))
+        legacy = content.replace("**Contents**", "## Table of Contents")
+        self.assertNotIn("Run-first", groups_for(legacy, "cli", "standard"))
+
     def test_late_step_warns_standard(self):
         content = "# T\n\n" + padding(90) + "```bash\nmake\n```\n"
         self.assertIn("Run-first", groups_for(content, "cli", "standard"))
@@ -81,7 +155,9 @@ class RunFirstTests(unittest.TestCase):
         self.assertIn("Run-first", groups_for(content, "cli"))
         self.assertNotIn("Run-first", groups_for(content, "educational"))
         self.assertNotIn("Run-first", groups_for(content, "dotfiles"))
-        self.assertIn("Run-first", groups_for(content, "hardware"))
+        with tempfile.TemporaryDirectory() as fw:
+            open(os.path.join(fw, "Blink.ino"), "w").close()
+            self.assertIn("Run-first", groups_for(content, "hardware", base_dir=fw))
 
 
 class AnchorTests(unittest.TestCase):
@@ -184,7 +260,8 @@ class BadgeTests(unittest.TestCase):
 class PlaceholderTests(unittest.TestCase):
     def test_flagged(self):
         for text in ["TODO: write this", "Docs TBD.", "NEED TO ADD screenshots", "(link needed)",
-                     "Lorem ipsum dolor", "INSERT LOGO", "[placeholder]", "<placeholder>",
+                     "Lorem ipsum dolor", "INSERT LOGO", "INSERT: project tagline",
+                     "INSERT SCREENSHOT HERE", "[placeholder]", "<placeholder>",
                      "PLACEHOLDER", "Set YOUR_KEY_HERE"]:
             with self.subTest(text=text):
                 self.assertIn("Placeholder text", groups_for(f"# T\n\n{text}\n"))
@@ -199,6 +276,10 @@ class PlaceholderTests(unittest.TestCase):
             "Run `TODO=1 make`.",
             "```\n# TODO in code\n```",
             "[Todo list](todo.md) example",
+            "Tracks every INSERT and UPDATE.",
+            "Logs INSERT, UPDATE and DELETE statements.",
+            "Batches INSERT INTO rows.",
+            "INSERT statements are queued.",
         ]:
             with self.subTest(text=text):
                 self.assertNotIn("Placeholder text", groups_for(f"# T\n\n{text}\n"))
@@ -289,29 +370,51 @@ class TitleTests(unittest.TestCase):
 
 
 class LengthTests(unittest.TestCase):
-    def length(self, n: int, project_type: str, verbosity: str | None, tail: str = "") -> list[str]:
-        content = "# T\n" + "x\n" * (n - 1 - tail.count("\n")) + tail
-        return groups_for(content, project_type, verbosity).get("Length issues", [])
+    def content(self, n: int, tail: str = "") -> str:
+        return "# T\n" + "x\n" * (n - 1 - tail.count("\n")) + tail
+
+    def length(self, n: int, project_type: str | None, verbosity: str | None, tail: str = "",
+               **kwargs) -> list[str]:
+        return groups_for(self.content(n, tail), project_type, verbosity, **kwargs).get("Length issues", [])
+
+    def short(self, n: int, project_type: str | None, verbosity: str | None, **kwargs) -> list[str]:
+        """Length notes (below-minimum) for an n-line README."""
+        return [n for n in notes_for(self.content(n), project_type, verbosity, **kwargs)
+                if n.strip().startswith("Length")]
 
     def test_standard_uses_table_range(self):
         self.assertEqual(self.length(150, "mobile", "standard"), [])
         self.assertEqual(self.length(150, "mobile", None), [])
-        self.assertIn("minimum of 150", self.length(149, "mobile", "standard")[0])
+        self.assertEqual(self.short(150, "mobile", "standard"), [])
+        self.assertIn("minimum of 150", self.short(149, "mobile", "standard")[0])
         self.assertIn("maximum of 500", self.length(501, "cli", "standard")[0])
+
+    def test_below_minimum_is_a_note_not_an_issue(self):
+        self.assertEqual(self.length(10, "mobile", "standard"), [])
+        self.assertIn("do not pad", self.short(10, "mobile", "standard")[0])
 
     def test_dotfiles_and_hardware_are_length_checked(self):
         self.assertEqual(self.length(30, "dotfiles", "standard"), [])
-        self.assertIn("minimum of 30", self.length(29, "dotfiles", "standard")[0])
+        self.assertIn("minimum of 30", self.short(29, "dotfiles", "standard")[0])
         self.assertIn("maximum of 200", self.length(201, "dotfiles", "standard")[0])
         self.assertEqual(self.length(100, "hardware", "standard"), [])
-        self.assertIn("minimum of 100", self.length(99, "hardware", "standard")[0])
+        self.assertIn("minimum of 100", self.short(99, "hardware", "standard")[0])
         self.assertIn("maximum of 400", self.length(401, "hardware", "standard")[0])
         self.assertIn("maximum of 520", self.length(521, "hardware", "detailed")[0])
 
     def test_minimal_is_absolute(self):
         self.assertEqual(self.length(30, "ml", "minimal"), [])
         self.assertIn("maximum of 80", self.length(81, "ml", "minimal")[0])
-        self.assertIn("minimum of 30", self.length(29, "cli", "minimal")[0])
+        self.assertIn("minimum of 30", self.short(29, "cli", "minimal")[0])
+
+    def test_early_stage_wins_over_verbosity_and_type(self):
+        for verbosity in [None, "minimal", "standard", "detailed"]:
+            with self.subTest(verbosity=verbosity):
+                self.assertEqual(self.length(60, "ml", verbosity, early_stage=True), [])
+                self.assertIn("maximum of 60 for early-stage",
+                              self.length(61, "ml", verbosity, early_stage=True)[0])
+                self.assertIn("minimum of 30", self.short(29, "ml", verbosity, early_stage=True)[0])
+        self.assertIn("maximum of 60", self.length(61, None, None, early_stage=True)[0])
 
     def test_detailed_stretch_and_cli_override(self):
         self.assertEqual(self.length(390, "web-app", "detailed"), [])
@@ -329,6 +432,11 @@ class LengthTests(unittest.TestCase):
         early = "## Appendix: Flags\n" + "f\n" * 100 + "## License\n\nMIT\n"
         self.assertTrue(self.length(450, "web-app", "detailed", early))
 
+    def test_targets_come_from_type_slugs_json(self):
+        data = vr.load_type_slugs()
+        self.assertEqual(vr.LENGTH_TARGETS, {k: tuple(v["target_lines"]) for k, v in data.items()})
+        self.assertEqual(vr.DETAILED_MAX_OVERRIDES, {"cli": 1200, "tui": 1200})
+
 
 class RepoFileTests(unittest.TestCase):
     """End-to-end runs on the repo's own README and the Ganba example."""
@@ -338,15 +446,42 @@ class RepoFileTests(unittest.TestCase):
                               capture_output=True, text=True, check=False)
 
     def test_repo_readme(self):
-        out = self.run_script("README.md", "--type", "other", "--dir", ".").stdout
-        self.assertNotIn("Placeholder text", out)
-        self.assertNotIn("Structure issues", out)
-        self.assertIn("first runnable step: L19", out)
+        for project_type in ["cli", "other"]:
+            with self.subTest(project_type=project_type):
+                result = self.run_script("README.md", "--type", project_type, "--dir", ".")
+                self.assertEqual(result.returncode, 0, result.stdout)
+                self.assertTrue(result.stdout.startswith("All checks passed."))
+                self.assertIn("first runnable step: L19", result.stdout)
 
     def test_ganba_example(self):
-        out = self.run_script("examples/ganba-mobile-app.md", "--type", "mobile", "--dir", "examples").stdout
-        groups = [ln for ln in out.splitlines()[1:] if ln.endswith(":") and not ln.startswith(" ")]
-        self.assertEqual(groups, ["Length issues:"])
+        result = self.run_script("examples/ganba-mobile-app.md", "--type", "mobile", "--dir", "examples")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("Notes (do not affect the exit code):", result.stdout)
+        self.assertIn("below the target minimum of 150 for mobile/standard", result.stdout)
+
+    def test_unknown_type_rejected(self):
+        result = self.run_script("README.md", "--type", "nonsense")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("invalid choice: 'nonsense'", result.stderr)
+
+    def test_early_stage_flag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "README.md")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("# T\n\n```bash\nmake\n```\n" + "x\n" * 70)
+            result = self.run_script(path, "--type", "ml", "--verbosity", "detailed",
+                                     "--early-stage", "--dir", tmp)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("exceeds the target maximum of 60 for early-stage", result.stdout)
+
+    def test_expect_flag_repeatable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "README.md")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("# T\n\n```bash\nmake\n```\n\n[a](ARCHITECTURE.md) ![s](assets/s/a.png)\n")
+            self.assertEqual(self.run_script(path, "--dir", tmp).returncode, 1)
+            ok = self.run_script(path, "--dir", tmp, "--expect", "ARCHITECTURE.md", "--expect", "assets/s")
+        self.assertEqual(ok.returncode, 0, ok.stdout)
 
 
 if __name__ == "__main__":

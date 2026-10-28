@@ -5,9 +5,11 @@ Checks:
 - Relative links point to files that exist
 - Badge URLs are syntactically valid
 - No remaining placeholder text (TODO, TBD, PLACEHOLDER, lorem ipsum, ...)
-- Line count within expected range for the project type and verbosity
+- Line count within the type's range (above the maximum is an issue; below the
+  minimum is only a note, since padding is worse than a short README)
 - Title present (H1, or a banner image / <h1> at the top) and at most one H1
-- First runnable step (shell block, store badge, download link) near the top
+- First runnable step (shell block, store badge, download link, deploy button,
+  hosted demo link) near the top; TOC lines before it are not counted
 - In-page anchors (#slug) match a heading or explicit anchor
 - No duplicate H2 headings
 - At most 6 badges before the first H2
@@ -16,12 +18,14 @@ Checks:
 - License text agrees with the LICENSE file in --dir
 - No style= attributes on HTML tags (GitHub strips them)
 
-Prints findings to stdout. Exit 0 if all pass, 1 if issues found.
+Prints findings to stdout, then any notes. Exit 0 if all pass, 1 if issues
+found; notes never change the exit code.
 """
 from __future__ import annotations
 
 import argparse
 import glob
+import json
 import os
 import re
 import sys
@@ -43,35 +47,31 @@ from _mdlib import (
 )
 
 
-# Standard-mode line ranges by type slug; mirrors SKILL.md "Length Targets".
-# max None = no upper bound.
+TYPE_SLUGS_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "type-slugs.json"
+)
+
+
+def load_type_slugs(path: str = TYPE_SLUGS_PATH) -> dict[str, dict]:
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+TYPE_SLUGS = load_type_slugs()
+# Standard-mode line ranges by type slug, from data/type-slugs.json (which
+# SKILL.md "Length Targets" mirrors). max None = no upper bound.
 LENGTH_TARGETS: dict[str, tuple[int, int | None]] = {
-    "web-app": (50, 300),
-    "cli": (60, 500),
-    "tui": (60, 500),
-    "library": (40, 400),
-    "framework": (60, 300),
-    "game": (100, 400),
-    "visual": (150, 500),
-    "gen-ai": (150, 500),
-    "ml": (200, 800),
-    "desktop": (100, 350),
-    "devops": (80, 300),
-    "educational": (500, None),
-    "browser-ext": (80, 400),
-    "api": (100, 350),
-    "mobile": (150, 350),
-    "docs-site": (60, 200),
-    "bot": (140, 400),
-    "dotfiles": (30, 200),
-    "hardware": (100, 400),
-    "other": (80, 300),
+    slug: tuple(entry["target_lines"]) for slug, entry in TYPE_SLUGS.items()
 }
 # Minimal is an absolute range whatever the type (SKILL.md Phase 3f).
 MINIMAL_LENGTH = (30, 80)
-# Detailed stretches the upper bound; these types get a fixed detailed max.
+# Early-stage projects override verbosity and type (SKILL.md Phase 3f).
+EARLY_STAGE_LENGTH = (30, 60)
+# Detailed stretches the upper bound; types with "detailed_max" get a fixed one.
 DETAILED_MAX_STRETCH = 1.3
-DETAILED_MAX_OVERRIDES = {"cli": 1200, "tui": 1200}
+DETAILED_MAX_OVERRIDES = {
+    slug: entry["detailed_max"] for slug, entry in TYPE_SLUGS.items() if "detailed_max" in entry
+}
 APPENDIX_HEADING_RE = re.compile(r"^appendix\b", re.IGNORECASE)
 
 # Placeholder tokens. Uppercase-only tokens are matched case-sensitively so
@@ -81,7 +81,11 @@ PLACEHOLDER_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"\bTBD\b"),
     re.compile(r"\bFIXME\b"),
     re.compile(r"\bXXX\b"),
-    re.compile(r"\bINSERT\b"),
+    # INSERT followed by a colon or an all-caps token ("INSERT LOGO"), but not
+    # SQL ("INSERT INTO", "INSERT and UPDATE", "INSERT, UPDATE").
+    re.compile(r"\bINSERT(?::|\s+(?!(?:INTO|AND|OR|OVERWRITE|IGNORE|ALL|FIRST|DELAYED|"
+               r"LOW_PRIORITY|HIGH_PRIORITY|ON|UPDATE|DELETE|SELECT|UPSERT|MERGE|REPLACE|"
+               r"RETURNING|VALUES|STATEMENTS?|QUERY|QUERIES)\b)[A-Z][A-Z_]+\b)"),
     re.compile(r"\bPLACEHOLDER\b"),
     re.compile(r"\bNEED TO ADD\b"),
     re.compile(r"\blink needed\b", re.IGNORECASE),
@@ -109,6 +113,9 @@ COMMON_COMMANDS = {
     "mvn", "node", "npm", "npx", "pip", "pip3", "pipx", "pnpm", "poetry",
     "python", "python3", "rustup", "scoop", "snap", "sudo", "uv", "uvx",
     "wget", "winget", "yarn", "dnf", "pacman", "nix", "flatpak",
+    # Firmware build and flash tools (hardware)
+    "pio", "platformio", "arduino-cli", "idf.py", "west", "esptool", "esptool.py",
+    "avrdude", "openocd", "picotool", "cmake",
 }
 # Store or download hosts that count as the run step wherever they appear
 STORE_URL_RE = re.compile(
@@ -125,6 +132,37 @@ STORE_URL_RE = re.compile(
 # so a version badge that links to /releases is not mistaken for a run step.
 RELEASES_URL_RE = re.compile(r"https?://github\.com/[^/\s)]+/[^/\s)]+/releases", re.IGNORECASE)
 DOWNLOAD_WORD_RE = re.compile(r"\b(?:download|get it|install)\b", re.IGNORECASE)
+# One-click deploy buttons (Heroku, Vercel, Netlify, Render, Railway)
+DEPLOY_URL_RE = re.compile(
+    r"https?://(?:www\.)?(?:"
+    r"heroku\.com/deploy|dashboard\.heroku\.com/new|vercel\.com/(?:new/clone|import|button)|"
+    r"app\.netlify\.com/start/deploy|render\.com/deploy|railway\.(?:app|com)/(?:new|template|deploy)"
+    r")",
+    re.IGNORECASE,
+)
+# A link to a hosted instance: its label (or badge alt text) is Demo, Live,
+# Try it or Open app, or the line reads "Live demo: https://...".
+HOSTED_LABEL_RE = re.compile(
+    r"^\s*(?:(?:live|online|hosted)\s+)?demo\W*$|^\s*live(?:\s+(?:site|app|version|instance))?\s*$|"
+    r"^\s*try\s+it\b|^\s*open\s+(?:the\s+)?app\b",
+    re.IGNORECASE,
+)
+HOSTED_LINE_RE = re.compile(
+    r"^\s*(?:[-*+]\s+)?(?:\*\*)?(?:(?:live|online|hosted)\s+demo|demo|live|try\s+it(?:\s+\w+)?|"
+    r"open\s+(?:the\s+)?app)(?:\*\*)?\s*:(?:\*\*)?\s*<?https?://",
+    re.IGNORECASE,
+)
+# A list or heading whose items are only in-page links, under a TOC label
+TOC_LABEL_RE = re.compile(
+    r"^\s*(?:\*\*|__)?(?:table\s+of\s+)?contents:?(?:\*\*|__)?\s*$"
+    r"|^\s{0,3}#{1,6}\s+(?:table\s+of\s+)?contents\s*#*\s*$",
+    re.IGNORECASE,
+)
+TOC_ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+\[[^\]]*\]\(#[^)\s]*\)\s*$")
+# Files that mean a hardware repo has firmware to build and flash
+FIRMWARE_GLOBS = ["platformio.ini", "*.ino", "*/*.ino", "sdkconfig", "sdkconfig.defaults",
+                  "west.yml", "CMakeLists.txt", "Makefile", "src/*.c", "src/*.cpp",
+                  "firmware", "*/platformio.ini"]
 
 BADGE_URL_RE = re.compile(
     r"shields\.io|badgen\.net|badge\.fury\.io|forthebadge\.com|badgesize\.io|"
@@ -198,15 +236,32 @@ def iter_link_targets(line: Line) -> list[str]:
     return targets
 
 
-def check_relative_links(lines: list[Line], base_dir: str) -> list[str]:
-    """Check that relative link and image targets point to existing files."""
+def resolve_repo_path(base_dir: str, path: str) -> str:
+    """A README path resolved against the project root. A leading "/" is
+    repo-root relative on GitHub, not filesystem absolute."""
+    return os.path.normpath(os.path.join(base_dir, path.lstrip("/")))
+
+
+def is_expected(path: str, expected: list[str]) -> bool:
+    """True when path is an --expect path or lies under an --expect directory."""
+    return any(path == e or path.startswith(e.rstrip(os.sep) + os.sep) for e in expected)
+
+
+def check_relative_links(lines: list[Line], base_dir: str, expect: list[str] | None = None) -> list[str]:
+    """Check that relative link and image targets point to existing files.
+
+    Paths in `expect` (relative to base_dir) count as existing: files the
+    caller will write later, such as captures copied in at publish time.
+    """
+    expected = [resolve_repo_path(base_dir, p) for p in expect or []]
     findings: list[str] = []
     for line in lines:
         for target in iter_link_targets(line):
             parsed = urlparse(target)
             if parsed.scheme or parsed.netloc or not parsed.path:
                 continue  # URLs, mailto:, and in-page anchors
-            if not os.path.exists(os.path.join(base_dir, unquote(parsed.path))):
+            path = resolve_repo_path(base_dir, unquote(parsed.path))
+            if not os.path.exists(path) and not is_expected(path, expected):
                 findings.append(f"  L{line.lineno}: broken link {target} — file not found")
     return findings
 
@@ -244,7 +299,11 @@ def check_placeholders(lines: list[Line]) -> list[str]:
     return findings
 
 
-def length_target(project_type: str, verbosity: str | None) -> tuple[int, int | None]:
+def length_target(
+    project_type: str | None, verbosity: str | None, early_stage: bool = False
+) -> tuple[int, int | None]:
+    if early_stage:
+        return EARLY_STAGE_LENGTH
     if verbosity == "minimal":
         return MINIMAL_LENGTH
     low, high = LENGTH_TARGETS[project_type]
@@ -268,25 +327,31 @@ def appendix_line_count(lines: list[Line], headings: list[Heading]) -> int:
 
 
 def check_length(
-    lines: list[Line], headings: list[Heading], project_type: str | None, verbosity: str | None
-) -> list[str]:
-    """Check line count against the type's range for this verbosity."""
-    if not project_type or project_type not in LENGTH_TARGETS:
-        return []
+    lines: list[Line], headings: list[Heading], project_type: str | None, verbosity: str | None,
+    early_stage: bool = False,
+) -> tuple[list[str], list[str]]:
+    """(issues, notes) for the line count against the type's range.
+
+    Above the maximum is an issue. Below the minimum is a note: SKILL.md
+    forbids padding, so a short README is not a failure.
+    """
+    if not early_stage and project_type not in LENGTH_TARGETS:
+        return [], []
     line_count = len(lines)
     note = ""
-    if verbosity == "detailed":
+    if verbosity == "detailed" and not early_stage:
         appendix = appendix_line_count(lines, headings)
         if appendix:
             line_count -= appendix
             note = f" (excluding {appendix} appendix lines)"
-    low, high = length_target(project_type, verbosity)
-    mode = f"{project_type}/{verbosity or 'standard'}"
-    if line_count < low:
-        return [f"  Length: {line_count} lines{note} is below the target minimum of {low} for {mode}"]
+    low, high = length_target(project_type, verbosity, early_stage)
+    mode = "early-stage" if early_stage else f"{project_type}/{verbosity or 'standard'}"
     if high is not None and line_count > high:
-        return [f"  Length: {line_count} lines{note} exceeds the target maximum of {high} for {mode}"]
-    return []
+        return [f"  Length: {line_count} lines{note} exceeds the target maximum of {high} for {mode}"], []
+    if line_count < low:
+        return [], [f"  Length: {line_count} lines{note} is below the target minimum of {low} "
+                    f"for {mode} (not a failure; do not pad)"]
+    return [], []
 
 
 def has_banner_title(lines: list[Line]) -> bool:
@@ -343,17 +408,30 @@ def find_first_runnable(lines: list[Line]) -> tuple[int, str] | None:
         None,
     )
     link = next(
-        (step for line in lines if not line.in_code and (step := download_step(line))),
+        (step for line in lines if not line.in_code and (step := link_step(line))),
         None,
     )
     return min((c for c in (block, link) if c), default=None)
 
 
-def download_step(line: Line) -> tuple[int, str] | None:
-    """A store link anywhere, or a GitHub releases link in a table/list or saying download."""
+def link_label(label: str) -> str:
+    """Link text with nested badge images replaced by their alt text."""
+    return MD_IMAGE_RE.sub(lambda m: m.group(1), label)
+
+
+def link_step(line: Line) -> tuple[int, str] | None:
+    """A store link, deploy button or hosted demo link anywhere, or a GitHub
+    releases link in a table/list or saying download."""
     text = line.prose
     if STORE_URL_RE.search(text):
         return line.lineno, "store link"
+    if DEPLOY_URL_RE.search(text):
+        return line.lineno, "deploy button"
+    if HOSTED_LINE_RE.match(text) or any(
+        urlparse(m.group(2)).scheme in ("http", "https") and HOSTED_LABEL_RE.search(link_label(m.group(1)))
+        for m in MD_LINK_RE.finditer(text)
+    ):
+        return line.lineno, "hosted demo link"
     if RELEASES_URL_RE.search(text) and (
         text.strip().startswith("|") or BULLET_RE.match(text) or DOWNLOAD_WORD_RE.search(text)
     ):
@@ -361,19 +439,57 @@ def download_step(line: Line) -> tuple[int, str] | None:
     return None
 
 
+def toc_line_count(lines: list[Line], before: int) -> int:
+    """Lines taken by TOC blocks (label plus in-page link list) before line `before`.
+
+    SKILL.md lets a TOC sit above the run section, so its lines do not count
+    toward the run-first limit.
+    """
+    count = 0
+    i = 0
+    while i < len(lines) and lines[i].lineno < before:
+        if lines[i].in_code or not TOC_LABEL_RE.match(lines[i].text):
+            i += 1
+            continue
+        j = i + 1
+        while j < len(lines) and not lines[j].text.strip() and not lines[j].in_code:
+            j += 1
+        items = j
+        while items < len(lines) and not lines[items].in_code and TOC_ITEM_RE.match(lines[items].text):
+            items += 1
+        if items > j:
+            count += items - i
+            i = items
+        else:
+            i += 1
+    return count
+
+
+def has_firmware(base_dir: str) -> bool:
+    return any(glob.glob(os.path.join(base_dir, pattern)) for pattern in FIRMWARE_GLOBS)
+
+
 def check_run_first(
-    first: tuple[int, str] | None, project_type: str | None, verbosity: str | None
-) -> list[str]:
+    first: tuple[int, str] | None, project_type: str | None, verbosity: str | None,
+    lines: list[Line] | None = None, base_dir: str = ".",
+) -> tuple[list[str], list[str]]:
+    """(issues, notes) for the position of the first runnable step."""
     if project_type in RUN_FIRST_SKIP_TYPES:
-        return []
+        return [], []
     limit = RUN_FIRST_MAX_LINE[verbosity or "standard"]
     if first is None:
-        return ["  Run-first: no runnable step found (shell block, store badge, or download link)"]
+        if project_type == "hardware" and not has_firmware(base_dir):
+            return [], ["  Run-first: no runnable step found; fine for a board-only hardware repo "
+                        "(no firmware found in --dir)"]
+        return ["  Run-first: no runnable step found (shell block, store badge, download link, "
+                "deploy button, or hosted demo link)"], []
     lineno, kind = first
-    if lineno > limit:
-        return [f"  L{lineno}: first runnable step ({kind}) is past line {limit} "
-                f"for {verbosity or 'standard'} verbosity"]
-    return []
+    toc = toc_line_count(lines or [], lineno)
+    if lineno - toc > limit:
+        excluding = f" (L{lineno - toc} excluding {toc} TOC lines)" if toc else ""
+        return [f"  L{lineno}: first runnable step ({kind}) is past line {limit}{excluding} "
+                f"for {verbosity or 'standard'} verbosity"], []
+    return [], []
 
 
 # --- Anchors and headings --------------------------------------------------
@@ -583,14 +699,17 @@ def check_license(lines: list[Line], headings: list[Heading], base_dir: str) -> 
 # --- Main ------------------------------------------------------------------
 
 def run_checks(
-    content: str, project_type: str | None, verbosity: str | None, base_dir: str
-) -> tuple[list[tuple[str, list[str]]], tuple[int, str] | None]:
-    """Return ([(group heading, findings)], first runnable step)."""
+    content: str, project_type: str | None, verbosity: str | None, base_dir: str,
+    expect: list[str] | None = None, early_stage: bool = False,
+) -> tuple[list[tuple[str, list[str]]], tuple[int, str] | None, list[str]]:
+    """Return ([(group heading, issues)], first runnable step, notes)."""
     lines = parse_lines(content)
     headings = collect_headings(lines)
     first = find_first_runnable(lines)
+    run_issues, run_notes = check_run_first(first, project_type, verbosity, lines, base_dir)
+    length_issues, length_notes = check_length(lines, headings, project_type, verbosity, early_stage)
     groups = [
-        ("Broken links", check_relative_links(lines, base_dir)),
+        ("Broken links", check_relative_links(lines, base_dir, expect)),
         ("Dead in-page anchors", check_anchors(lines, headings)),
         ("Badge URL issues", check_badge_urls(lines)),
         ("Header badge count", check_header_badges(lines, headings)),
@@ -599,12 +718,12 @@ def run_checks(
         ("Positional image references", check_positional_refs(lines)),
         ("HTML style attributes", check_style_attrs(lines)),
         ("License mismatch", check_license(lines, headings, base_dir)),
-        ("Run-first", check_run_first(first, project_type, verbosity)),
-        ("Length issues", check_length(lines, headings, project_type, verbosity)),
+        ("Run-first", run_issues),
+        ("Length issues", length_issues),
         ("Structure issues", check_structure(lines, headings)),
         ("Duplicate H2 headings", check_duplicate_h2(headings)),
     ]
-    return [(name, findings) for name, findings in groups if findings], first
+    return [(name, findings) for name, findings in groups if findings], first, run_notes + length_notes
 
 
 def main() -> None:
@@ -617,12 +736,20 @@ def main() -> None:
         default="README.md",
         help="README file to validate (default: README.md)",
     )
-    parser.add_argument("--type", dest="project_type", default=None,
-                        help="Project type slug for length and run-first checks")
+    parser.add_argument("--type", dest="project_type", default=None, choices=sorted(LENGTH_TARGETS),
+                        metavar="SLUG",
+                        help="Project type slug for length and run-first checks: "
+                             + ", ".join(sorted(LENGTH_TARGETS)))
     parser.add_argument("--verbosity", default=None, choices=["minimal", "standard", "detailed"],
                         help="Verbosity level for length and run-first checks (default: standard)")
+    parser.add_argument("--early-stage", action="store_true",
+                        help=f"Early-stage project: length range {EARLY_STAGE_LENGTH[0]}-"
+                             f"{EARLY_STAGE_LENGTH[1]} lines, overriding --type and --verbosity")
     parser.add_argument("--dir", default=".",
                         help="Project root: resolves relative links and locates the LICENSE file")
+    parser.add_argument("--expect", action="append", default=[], metavar="PATH",
+                        help="Path (relative to --dir) that will exist when the README is published; "
+                             "links to it, or to files under it, are not reported broken. Repeatable.")
     args = parser.parse_args()
 
     try:
@@ -632,22 +759,27 @@ def main() -> None:
         print(f"Error: file not found: {args.file}", file=sys.stderr)
         sys.exit(2)
 
-    groups, first = run_checks(content, args.project_type, args.verbosity, args.dir)
+    groups, first, notes = run_checks(content, args.project_type, args.verbosity, args.dir,
+                                      args.expect, args.early_stage)
     line_count = len(content.splitlines())
     first_info = f"first runnable step: L{first[0]} ({first[1]})" if first else "no runnable step found"
 
     if not groups:
         print(f"All checks passed. ({line_count} lines; {first_info})")
-        sys.exit(0)
-
-    total = sum(len(findings) for _, findings in groups)
-    print(f"Validation found {total} issue(s) ({line_count} lines; {first_info}):")
-    print()
-    for name, findings in groups:
-        print(f"{name}:")
-        for finding in findings:
-            print(finding)
-    sys.exit(1)
+    else:
+        total = sum(len(findings) for _, findings in groups)
+        print(f"Validation found {total} issue(s) ({line_count} lines; {first_info}):")
+        print()
+        for name, findings in groups:
+            print(f"{name}:")
+            for finding in findings:
+                print(finding)
+    if notes:
+        print()
+        print("Notes (do not affect the exit code):")
+        for note in notes:
+            print(note)
+    sys.exit(1 if groups else 0)
 
 
 if __name__ == "__main__":

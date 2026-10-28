@@ -83,7 +83,7 @@ class TocTests(unittest.TestCase):
         result = subprocess.run([sys.executable, script_path("generate-toc.py"), "--h3"],
                                 input="# T\n\n" + body, capture_output=True, text=True, check=True)
         readme = "# T\n\n" + result.stdout + "\n" + body
-        groups, _ = vr.run_checks(readme, None, None, REPO)
+        groups, _, _ = vr.run_checks(readme, None, None, REPO)
         self.assertNotIn("Dead in-page anchors", dict(groups))
 
 
