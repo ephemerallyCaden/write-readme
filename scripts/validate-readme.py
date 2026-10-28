@@ -25,16 +25,21 @@ import glob
 import os
 import re
 import sys
-from dataclasses import dataclass
 from urllib.parse import parse_qs, unquote, urlparse
 
 from _mdlib import (
-    ATX_HEADING_RE,
     BULLET_RE,
-    INLINE_CODE_RE,
+    MAX_HEADER_BADGES,
+    MD_IMAGE_RE,
+    MD_LINK_RE,
+    Heading,
     Line,
+    collect_headings,
+    github_slug,
     iter_code_blocks,
     parse_lines,
+    plain_heading_text,
+    unique_slugs,
 )
 
 
@@ -124,7 +129,6 @@ BADGE_URL_RE = re.compile(
     r"ci\.appveyor\.com/api/projects/status|/badge(?:s)?[/.]|badge\.svg",
     re.IGNORECASE,
 )
-MAX_HEADER_BADGES = 6
 DEAD_BADGE_HOSTS = [
     "travis-ci.org", "nodei.co", "ci.appveyor.com", "david-dm.org",
     "gemnasium.com", "requires.io", "inch-ci.org", "bettercodehub.com",
@@ -174,42 +178,10 @@ LICENSE_NAME_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
 ]
 ALL_RIGHTS_RE = re.compile(r"\ball rights reserved\b", re.IGNORECASE)
 
-HTML_HEADING_RE = re.compile(r"<h([1-6])\b[^>]*>(.*?)</h\1\s*>", re.IGNORECASE | re.DOTALL)
-MD_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(\s*<?([^)\s>]+)>?[^)]*\)")
-MD_LINK_RE = re.compile(r"(?<!!)\[((?:[^\[\]]|!\[[^\]]*\]\([^)]*\))*)\]\(\s*<?([^)\s>]+)>?[^)]*\)")
 HTML_IMG_RE = re.compile(r"<img\b[^>]*?\bsrc\s*=\s*[\"']([^\"']+)[\"'][^>]*>", re.IGNORECASE)
 HTML_ALT_RE = re.compile(r"\balt\s*=\s*[\"']([^\"']*)[\"']", re.IGNORECASE)
 HTML_HREF_RE = re.compile(r"<a\b[^>]*?\bhref\s*=\s*[\"']([^\"']+)[\"']", re.IGNORECASE)
 EXPLICIT_ANCHOR_RE = re.compile(r"<[a-zA-Z][^>]*?\b(?:name|id)\s*=\s*[\"']([^\"']+)[\"']", re.IGNORECASE)
-
-
-@dataclass
-class Heading:
-    lineno: int
-    level: int
-    text: str
-
-
-def collect_headings(lines: list[Line]) -> list[Heading]:
-    headings: list[Heading] = []
-    prev: Line | None = None
-    for line in lines:
-        if line.in_code:
-            prev = None
-            continue
-        m = ATX_HEADING_RE.match(line.text)
-        if m:
-            headings.append(Heading(line.lineno, len(m.group(1)), m.group(2)))
-        elif prev is not None and re.match(r"^\s{0,3}(=+|-+)\s*$", line.text):
-            p = prev.text.strip()
-            if p and not BULLET_RE.match(prev.text) and not p.startswith(("|", "<", "#", ">")):
-                level = 1 if line.text.strip()[0] == "=" else 2
-                headings.append(Heading(prev.lineno, level, p))
-        for hm in HTML_HEADING_RE.finditer(line.text):
-            headings.append(Heading(line.lineno, int(hm.group(1)), hm.group(2)))
-        prev = line
-    headings.sort(key=lambda h: h.lineno)
-    return headings
 
 
 # --- Existing checks -------------------------------------------------------
@@ -403,33 +375,10 @@ def check_run_first(
 
 # --- Anchors and headings --------------------------------------------------
 
-def plain_heading_text(text: str) -> str:
-    """Approximate the rendered text GitHub slugs a heading from."""
-    text = MD_IMAGE_RE.sub(lambda m: m.group(1), text)
-    text = MD_LINK_RE.sub(lambda m: m.group(1), text)
-    text = INLINE_CODE_RE.sub(lambda m: m.group(2), text)
-    text = re.sub(r"<[^>]+>", "", text)
-    return text.replace("*", "").replace("~", "")
-
-
-def github_slug(text: str) -> str:
-    text = plain_heading_text(text).strip().lower()
-    text = re.sub(r"[^\w\- ]", "", text)
-    return text.replace(" ", "-")
-
-
 def collect_anchors(lines: list[Line], headings: list[Heading]) -> set[str]:
-    anchors: set[str] = {"top"}
-    counts: dict[str, int] = {}
-    for h in headings:
-        base = github_slug(h.text)
-        n = counts.get(base, 0)
-        slug = base if n == 0 else f"{base}-{n}"
-        while slug in anchors and n:
-            n += 1
-            slug = f"{base}-{n}"
-        counts[base] = n + 1
-        anchors.add(slug)
+    anchors = {"top", *unique_slugs([h.text for h in headings if not h.html])}
+    # <hN> tags get no GitHub anchor; accept their slug anyway to avoid false alarms.
+    anchors.update(github_slug(h.text) for h in headings if h.html)
     for line in lines:
         for m in EXPLICIT_ANCHOR_RE.finditer(line.text):
             anchors.add(m.group(1))
