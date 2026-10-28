@@ -19,7 +19,7 @@ Project root is the nearest directory, starting at the README's own and walking 
 
 ## Hard rules
 
-- Nothing is written until the user picks fixes and approves the write. Never create files in the project during critique; the working copy lives at `/tmp/write-readme-critique/README.md`.
+- Nothing is written until the user picks fixes and approves the write. Never create files in the project during critique; the working copy lives in `<critique-dir>`, a directory of this run's own (Step 5).
 - Assessment A (judgment) never sees script output. Script results are evidence for the synthesis, not a starting point for the review.
 - Every finding carries a concrete fix: the exact old text and the exact new text, or an exact insert/delete/move. "Consider improving X" is not a fix.
 - A fix may only state facts found in the codebase. If the right text needs a fact the codebase lacks (expected output, a URL, a benchmark), the fix inserts a `<!-- TODO: ... -->` comment naming the missing fact. Never invent output, numbers, or links.
@@ -178,14 +178,14 @@ With no P0 or P1 findings, make "All findings" the recommended option. With no f
 ## Step 5: Apply
 
 - None / report only: stop. Write nothing, and create no working copy.
-- Otherwise copy the README to `/tmp/write-readme-critique/README.md` (and ARCHITECTURE.md to `/tmp/write-readme-critique/ARCHITECTURE.md` when a chosen fix targets it) and apply the chosen fixes there, from the highest line number to the lowest so earlier line numbers stay valid. Apply each fix as an exact replacement of its quoted old text. If the old text no longer matches (two fixes overlap), skip that fix and report it as skipped.
+- Otherwise create `<critique-dir>` once with `mktemp -d /tmp/write-readme-critique.XXXXXX`, so parallel critiques never share a working copy. Note the path it prints and write that literal path wherever `<critique-dir>` appears for the rest of the session, including when the user adjusts a fix; shell variables don't carry over between commands. Copy the README to `<critique-dir>/README.md` (and ARCHITECTURE.md to `<critique-dir>/ARCHITECTURE.md` when a chosen fix targets it) and apply the chosen fixes there, from the highest line number to the lowest so earlier line numbers stay valid. Apply each fix as an exact replacement of its quoted old text. If the old text no longer matches (two fixes overlap), skip that fix and report it as skipped.
 - Change nothing outside the chosen fixes, with one exception: when a fix changes headings, regenerate an existing TOC and report it as "follow-on: TOC updated".
-- Re-run both Assessment B commands on the working copy. Keep `--dir <project-root>` so relative links resolve against the project, not `/tmp`.
+- Re-run both Assessment B commands on the working copy. Keep `--dir <project-root>` so relative links resolve against the project, not `<critique-dir>`.
 - If a fix introduced a new checker-P0 or checker-P1 finding, correct the fix's own text and re-run. Never touch other text to clear it.
 
 Then show, in this order:
 1. Applied and skipped ids, with the reason for each skip.
-2. `diff -u <readme> /tmp/write-readme-critique/README.md`, the full unified diff, and the same for ARCHITECTURE.md when a fix touched it.
+2. `diff -u <readme> <critique-dir>/README.md`, the full unified diff, and the same for ARCHITECTURE.md when a fix touched it.
 3. A before/after table: checker-P0/P1/P2 counts and the validate-readme issue count.
 4. The question "Write these changes to `<path>`?". Skip it if the user already approved writing in their selection (for example "apply all and write it").
 

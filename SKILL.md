@@ -11,6 +11,8 @@ Generate a README.md by analyzing the current codebase, asking 0-3 questions, an
 
 `<skill-dir>` in the commands below is this skill's base directory; `references/`, `scripts/`, and `skills/` paths are relative to it.
 
+`<draft-dir>` is this run's own draft directory, so two runs at once never overwrite each other's files. Create it once, at the start of Phase 3 (Enhance Mode too), with `mktemp -d /tmp/write-readme-draft.XXXXXX`. Note the path it prints and write that literal path wherever `<draft-dir>` appears, through Phase 6 and every Phase 5 revision; shell variables don't carry over from one command to the next. Never run that `mktemp` again in the same run. The directory mirrors project paths: `<draft-dir>/assets/screenshots/hero.png` is copied to `assets/screenshots/hero.png` in Phase 6.
+
 Output: `README.md` at the project root. If one exists, ask whether to enhance or replace. Critique mode (below) edits an existing README instead of generating one.
 
 ## Invocation
@@ -139,15 +141,17 @@ These are the only detection signals; Special Detection below says what to do wh
 **GitHub Pages:** CNAME file at root, .nojekyll, raw index.html with no manifest, gh-pages branch.
 **Early-stage:** decided by size and history, measured as below. A missing manifest is not enough on its own.
 
-Source files are tracked files in a programming, scripting, or shader language, leaving out dependency, build-output, and engine cache directories, Unity's vendored `Assets/Plugins/` and `Assets/TextMesh Pro/`, engine metadata (Unity `.meta`, Godot `.import` and `.uid`), and minified files. The command lists them; measure from the project root with:
+Source files are tracked files in a programming, scripting, or shader language, leaving out dependency, build-output, and engine cache directories, Unity's vendored `Assets/Plugins/` and `Assets/TextMesh Pro/`, engine metadata (Unity `.meta`, Godot `.import` and `.uid`), and minified files. Run this block as one command from the project root. It lists them in a fresh temp file, measures, and deletes the file:
 ```bash
+src=$(mktemp)
 { git ls-files 2>/dev/null || find . -type f -not -path './.git/*'; } \
   | grep -Ev '(^|/)(node_modules|vendor|third_party|dist|build|target|\.?venv|__pycache__|Pods|\.godot|Intermediate|Saved|DerivedDataCache|Binaries)/|^(\./)?(Library|Temp|Obj|Logs|UserSettings|Assets/Plugins|Assets/TextMesh Pro)/|\.(meta|import|uid)$|\.min\.js$' \
-  | grep -E '\.(py|js|jsx|mjs|cjs|ts|tsx|vue|svelte|go|rs|c|h|cc|cpp|hpp|m|mm|swift|kt|kts|java|scala|cs|fs|gd|shader|cginc|hlsl|glsl|lua|rb|php|ex|exs|hs|ml|dart|zig|ino|sh)$' > /tmp/write-readme-src.txt
-wc -l < /tmp/write-readme-src.txt                                 # source files
-tr '\n' '\0' < /tmp/write-readme-src.txt | xargs -0 cat | wc -l   # source lines
-git rev-list --count HEAD 2>/dev/null                             # commits
-git tag 2>/dev/null | wc -l                                       # tags
+  | grep -E '\.(py|js|jsx|mjs|cjs|ts|tsx|vue|svelte|go|rs|c|h|cc|cpp|hpp|m|mm|swift|kt|kts|java|scala|cs|fs|gd|shader|cginc|hlsl|glsl|lua|rb|php|ex|exs|hs|ml|dart|zig|ino|sh)$' > "$src"
+wc -l < "$src"                                  # source files
+tr '\n' '\0' < "$src" | xargs -0 cat | wc -l  # source lines
+git rev-list --count HEAD 2>/dev/null           # commits
+git tag 2>/dev/null | wc -l                     # tags
+rm -f "$src"
 ```
 Count GitHub releases too when the release list is known. Then apply, in order:
 1. Fewer than 5 source files: Early-stage.
@@ -353,11 +357,11 @@ Keep 0-6 badges in total; zero is fine. Never generate a static badge that imita
 ### 3d. Visual assets
 
 Use the images Phase 1j classified as usable. Reference them at the template's screenshot positions and read each one to write accurate alt text. For positions still uncovered:
-- **MUST position**: act on the Phase 2b Screenshots answer. Auto-capture: delegate to the screenshot sub-skill at `skills/screenshot/SKILL.md` (its Path A) with the output directory `/tmp/write-readme-draft/assets/screenshots/`, and reference each returned image in the draft by its project path (`assets/screenshots/hero.png`). I'll add later (the default): insert descriptive placeholders. Point to files: use the paths the user gave.
+- **MUST position**: act on the Phase 2b Screenshots answer. Auto-capture: delegate to the screenshot sub-skill at `skills/screenshot/SKILL.md` (its Path A) with the output directory `<draft-dir>/assets/screenshots/` (pass the literal path), and reference each returned image in the draft by its project path (`assets/screenshots/hero.png`). I'll add later (the default): insert descriptive placeholders. Point to files: use the paths the user gave.
 - **SHOULD/COULD position**: insert placeholders without asking.
 - **Minimal verbosity**: use found images only; no placeholders, no capture unless the user chose Auto-capture.
 
-Nothing is written into the project before Phase 6. Captures, `.tape` files, and rendered diagrams stay under `/tmp/write-readme-draft/`, which mirrors project paths: `/tmp/write-readme-draft/assets/screenshots/hero.png` is copied to `assets/screenshots/hero.png` on approval.
+Nothing is written into the project before Phase 6. Captures, `.tape` files, and rendered diagrams stay under `<draft-dir>`, which mirrors project paths: `<draft-dir>/assets/screenshots/hero.png` is copied to `assets/screenshots/hero.png` on approval.
 
 Rendering hygiene:
 - If the README is published to a registry (`readme = "README.md"` in pyproject.toml, setup.py reading README into `long_description`, or a package.json without `"private": true`), use absolute `https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}` image URLs. PyPI and npm don't resolve relative paths. Take `{branch}` from:
@@ -371,7 +375,7 @@ Rendering hygiene:
 
 Generate a TOC only if the README exceeds 150 lines. It is not a heading: a bold `**Contents**` line followed by a flat list of H2 links in GitHub anchor style, so the first H2 is still the run section. Insert it after the description and badges, before the first H2. Include H3s only if there are more than 10 H2s. Build it from the draft rather than by hand:
 ```bash
-python3 <skill-dir>/scripts/generate-toc.py /tmp/write-readme-draft/README.md
+python3 <skill-dir>/scripts/generate-toc.py <draft-dir>/README.md
 ```
 It prints the `**Contents**` block and adds H3s by itself past 10 H2s (`--no-h3` turns that off). Below 150 lines, a nav row near the top (`Docs • Demo • Install`) can stand in for it.
 
@@ -419,17 +423,17 @@ The Run-first rule in Phase 3b overrides those orderings: wherever the template 
 
 ### Anti-AI check (mandatory)
 1. Self-review every prose sentence against the 13 structural rules in the Anti-AI Writing Rules section below and the P0/P1 checklist in `references/anti-ai-rules.md`.
-2. Then run the scripts. Write the draft to `/tmp/write-readme-draft/README.md` (never the project root before approval) and run:
+2. Then run the scripts. Write the draft to `<draft-dir>/README.md` (never the project root before approval) and run:
    ```bash
-   python3 <skill-dir>/scripts/check-anti-ai.py --file /tmp/write-readme-draft/README.md --severity P1   # gate: P0+P1
-   python3 <skill-dir>/scripts/check-anti-ai.py --file /tmp/write-readme-draft/README.md --severity P2   # adds P2 warnings
-   python3 <skill-dir>/scripts/validate-readme.py /tmp/write-readme-draft/README.md --type <type_slug> --verbosity <level> --dir <project-root>
+   python3 <skill-dir>/scripts/check-anti-ai.py --file <draft-dir>/README.md --severity P1   # gate: P0+P1
+   python3 <skill-dir>/scripts/check-anti-ai.py --file <draft-dir>/README.md --severity P2   # adds P2 warnings
+   python3 <skill-dir>/scripts/validate-readme.py <draft-dir>/README.md --type <type_slug> --verbosity <level> --dir <project-root>
    ```
    The checker runs twice because its exit code counts everything at or above `--severity`: the P1 run's exit code is the gate, and the P2 run only lists warnings. Without `--severity` it reports P0 only.
    `validate-readme.py` checks relative links and badge URLs, the first runnable step (past line 80 in standard and detailed, 50 in minimal; skipped for educational and dotfiles; with `--type game`, a numbered list in the first H2 that opens a scene or project and presses Play also counts), dead in-page anchors, duplicate H2s, header badges (at most 6), dead badge hosts and static badges imitating live status, placeholders outside comments and code, positional image references ("screenshot above"), license text against the LICENSE file, `style=` attributes, and the Phase 3f length range. Its first output line always gives the first runnable step's line. Flags:
    - `--type` takes a canonical type slug and rejects anything else. `--verbosity` sets the run-first and length limits; add `--early-stage` when Phase 1g flagged an Early-stage project, for the 30-60 range.
-   - `--dir` must be the project root, not the `/tmp` draft directory: links and the LICENSE comparison resolve against it.
-   - `--expect PATH` (repeatable) names a file Phase 6 will create, so a link to it isn't reported broken. Pass `--expect ARCHITECTURE.md` when the companion file is being generated, and `--expect assets/screenshots/<file>` for each captured image the draft references.
+   - `--dir` must be the project root, not `<draft-dir>`: links and the LICENSE comparison resolve against it.
+   - `--expect PATH` (repeatable) names a file Phase 6 will create, so a link to it isn't reported broken. PATH is relative to the project root, never a `<draft-dir>` path. Pass `--expect ARCHITECTURE.md` when the companion file is being generated, and `--expect assets/screenshots/<file>` for each captured image the draft references (`<draft-dir>/assets/screenshots/hero.png` becomes `--expect assets/screenshots/hero.png`).
    - Length: over the maximum is an issue. Under the minimum prints a note and leaves the exit code alone; it needs no fix, because padding is worse (Phase 3f).
 3. Fix every P0 and P1 finding and re-run until the `--severity P1` check exits 0. The one exception is a finding on a documented rule exception: an emoji next to a brand or mascot name (rule 1), or a banned word inside a real name or identifier the README must quote (a package, product, or file name). Leave that text as it is and list it under "Warnings" in the Phase 5 summary with its reason; the gate is met when only such findings remain. P2 findings and `validate-readme.py` issues: fix, or list them under Warnings with a reason. If `python3` is unavailable, note that in Warnings and rely on step 1.
 
@@ -473,13 +477,13 @@ The user can:
 - Approve ("looks good", "write it", "ship it") -- proceed to Phase 6
 - Request changes ("make the description shorter", "remove the tech stack table") -- apply, show updated, ask again
 - Request different verbosity ("make it minimal") -- regenerate, show, ask again
-- Abort ("cancel", "nevermind") -- nothing is written to the project; the `/tmp` draft and captures are left behind
+- Abort ("cancel", "nevermind") -- nothing is written to the project; `<draft-dir>` and its captures are left behind, and the reply gives its path
 
 Loop until approved or aborted. After the first pass, apply only the specific requested change; do not re-present the full options block.
 
 ## Phase 6: WRITE
 
-Write README.md to the project root, and ARCHITECTURE.md beside it if it was generated. Copy each captured image the README references from `/tmp/write-readme-draft/assets/` to the same path under the project root, creating directories as needed; the Phase 5 approval covers any overwrite it listed. Confirm: "README.md written. [N] lines." (plus the ARCHITECTURE.md line count and the copied image paths).
+Write README.md to the project root, and ARCHITECTURE.md beside it if it was generated. Copy each captured image the README references from `<draft-dir>/assets/` to the same path under the project root, creating directories as needed; the Phase 5 approval covers any overwrite it listed. Confirm: "README.md written. [N] lines." (plus the ARCHITECTURE.md line count and the copied image paths).
 
 If an existing README was replaced, note that the old version can be recovered via git (if git is initialized).
 
@@ -536,7 +540,7 @@ When the safety exception applies, the MOVED line becomes, for example:
 ```
   RUN-FIRST: kept below Security model, safety context
 ```
-Then continue in the main flow: write the enhanced draft to `/tmp/write-readme-draft/README.md`, run Phase 4 on it, present it in Phase 5 with this change list alongside the structural summary, and write it in Phase 6. There is no separate write step.
+Then continue in the main flow: write the enhanced draft to `<draft-dir>/README.md`, run Phase 4 on it, present it in Phase 5 with this change list alongside the structural summary, and write it in Phase 6. There is no separate write step.
 
 ## Special Detection
 
