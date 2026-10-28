@@ -46,8 +46,8 @@ Use the unified taxonomy below. First match wins (lowest priority number).
 | 7 | Desktop Application | Electron/Tauri/Qt/GTK/SwiftUI/WPF imports, .desktop files |
 | 8 | TUI Application | textual/blessed/tview/bubbletea/cursive/crossterm/ncurses imports. Uses CLI Tool template. |
 | 9 | Documentation Site / SSG | docusaurus.config/vitepress/mkdocs.yml/astro.config/sphinx conf.py |
-| 10 | Web Application | Server framework (express/fastapi/flask/django/next/nuxt/svelte/rails) + dev/start/serve script |
-| 11 | API / Backend Service | Server framework + NO frontend files (no pages/, components/, public/index.html) |
+| 10 | Web Application | Server framework (express/fastapi/flask/django/next/nuxt/svelte/rails) + dev/start/serve script + frontend files (pages/, components/, src/pages/, src/components/, templates/, public/, or index.html) |
+| 11 | API / Backend Service | Server framework + NO frontend files. Everything that missed priority 10 for lack of frontend files lands here. |
 | 12 | CLI Tool | bin in manifest, argparse/click/typer/clap/cobra imports, console_scripts entry point |
 | 13 | Framework | Plugin system, middleware patterns, scaffolding CLI, create-* package |
 | 14 | ML/AI Model | torch/tensorflow/jax imports + model dirs + training scripts (WITHOUT visual output signals) |
@@ -73,10 +73,18 @@ Grep for config patterns:
 Grep pattern: (argparse|click\.command|typer\.Typer|clap::Parser|cobra\.Command)
 ```
 
-If CLI tool detected, run:
+If CLI tool detected, run its `--help` with a 5-second limit. `timeout` is not on macOS by default, so use Python, which the checker scripts already need:
 ```bash
-timeout 5 <entry_point> --help 2>&1 || true
+python3 - <entry_point> --help <<'EOF'
+import subprocess, sys
+try:
+    r = subprocess.run(sys.argv[1:], capture_output=True, text=True, timeout=5, stdin=subprocess.DEVNULL)
+    print(r.stdout + r.stderr)
+except (OSError, subprocess.TimeoutExpired) as e:
+    print(f"--help failed: {e}")
+EOF
 ```
+Only run `--help` (or `--version`) this way, never a command that does work.
 
 ### 1d. Extract public API
 
@@ -111,6 +119,8 @@ Priority chain for display name:
 3. Repo name from git remote
 4. Directory name
 
+If two human-readable candidates disagree (app label "Ganba" vs manifest name "Climb Log"), that is Phase 2a question 5. Otherwise use the highest-priority candidate.
+
 ### 1i. Supplementary docs
 
 ```bash
@@ -119,21 +129,46 @@ find . -maxdepth 3 -name "*.md" -not -name "README*" -not -name "LICENSE*" -not 
 
 Read the first 5 lines of each to understand its purpose. Link significant docs in the generated README.
 
+### 1j. Find and classify images
+
+Runs here, before Phase 2, so the screenshot question is asked once and only when it is needed.
+
+Step 1 -- Search the ENTIRE project for images. Do not hardcode directories:
+```bash
+find . -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.gif" -o -name "*.svg" -o -name "*.webp" \) \
+  -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/build/*" \
+  -not -path "*/.dart_tool/*" -not -path "*/dist/*" -not -path "*/target/*" \
+  -not -path "*/__pycache__/*" -not -path "*/.venv/*"
+```
+This catches images anywhere: test/goldens/ (Flutter golden tests), docs/design/, assets/, or wherever else they exist. Also check existing README for external image references.
+
+Step 2 -- Look at each found image and decide if it belongs in a README. Not every image file is a screenshot. Read the image and judge:
+- **App screen / UI render** (dashboard, settings, feature view) → use it
+- **Diagram** (architecture, flowchart, pipeline) → use it
+- **Terminal output** (CLI help, command demo) → use it
+- **Logo** → use only in the title area, not as a screenshot
+- **Icon / sprite / texture / favicon** → skip, internal asset
+- **Diff image / coverage badge / test failure** → skip, test artifact
+- **Design mockup** → use if it represents the actual app, skip if it's a wireframe draft
+
+Only reference images that would help a reader understand what the project does or looks like. When in doubt, skip it. Record which template screenshot positions (MUST/SHOULD/COULD) the usable images cover.
+
 ## Phase 2: ASK
 
 ### 2a. Required questions (0-3 max, priority ordered)
 
-When more than 3 would be needed, use this priority:
-1. "Enhance existing or generate fresh?" -- only if existing README found
-2. "Describe your project in 1-2 sentences -- what does it do and who is it for?" -- SKIP if manifest description >10 words AND no existing README
-3. "This looks like both a [type A] and [type B]. Which is its primary identity?" -- only if type detection is ambiguous
-4. If monorepo: "Generate README for the root monorepo or a specific package?"
+A required question is one with no safe default. These are the only ones, wherever they are triggered (Phase 1h, Special Detection), and all of them count toward the cap. Ask the ones that apply, in this order:
+1. "Enhance existing or generate fresh?" -- only if existing README found.
+2. "Describe your project in 1-2 sentences -- what does it do and who is it for?" -- SKIP if manifest description >10 words AND no existing README. If cut: infer from manifest and code.
+3. "This looks like both a [type A] and [type B]. Which is its primary identity?" -- only if type detection is ambiguous. If cut: the lower priority number wins.
+4. If monorepo: "Generate README for the root monorepo or a specific package?" If cut: root.
+5. "Should the title be [A] or [B]?" -- only if Phase 1h found two human-readable names that disagree. If cut: the higher candidate in the Phase 1h chain.
 
-Hard cap: 3 required questions. After 3, infer everything remaining.
+Hard cap: 3 required questions. After 3, use the "If cut" default for the rest. The optional choices block in 2b does not count toward the cap, because every item in it has a default.
 
 ### 2b. Optional choices (single block, all skippable)
 
-Present after required questions:
+Present after required questions, as one block:
 
 ```
 Before I generate, a few quick choices (press Enter to skip any):
@@ -148,7 +183,10 @@ Before I generate, a few quick choices (press Enter to skip any):
                 Default: Standard (or inferred from context)
 
  Screenshots:   [Auto-capture] [I'll add later] [Point to files]
-                Only shown if no screenshots AND visual project type
+                Default: I'll add later (descriptive placeholders)
+                Only shown if Phase 1j found no usable image for a MUST
+                screenshot position and minimal wasn't already requested.
+                This is the only screenshot question.
 ```
 
 Unanswered choices use defaults. "Go", "just do it", or Enter accepts all defaults.
@@ -165,7 +203,7 @@ Unanswered choices use defaults. "Go", "just do it", or Enter accepts all defaul
 **standard** (default) -- Balanced README. Most projects.
 - Includes: all MUST sections + SHOULD sections where data is available
 - Skips: COULD sections unless data already exists
-- Screenshot placeholders follow Phase 3d flow
+- Screenshots and placeholders follow Phase 3d
 - Target: ideal length for detected type (see Length Targets)
 - Triggered by: default when no preference stated
 
@@ -197,7 +235,7 @@ Library / Package: a code snippet of 10 lines or fewer may precede the install l
 
 Exempt: Educational / Awesome lists, personal config / dotfiles repos (a browse index with nothing to install), and ARCHITECTURE.md.
 
-Apply all anti-AI writing rules during generation (see section below), not as a post-pass. The full catalog with replacements and register notes is in `references/anti-ai-rules.md` (relative to this skill's base directory). Read it before writing prose.
+Apply all anti-AI writing rules during generation (see section below), not only as a post-pass. The full catalog with replacements and register notes is in `references/anti-ai-rules.md` (relative to this skill's base directory). Read it before writing prose.
 
 ### 3c. Generate badges
 
@@ -222,35 +260,16 @@ Never generate a static badge that imitates live status (`build-passing`, `maint
 
 ### 3d. Visual assets
 
-Step 1 -- Search the ENTIRE project for images. Do not hardcode directories:
-```bash
-find . -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.gif" -o -name "*.svg" -o -name "*.webp" \) \
-  -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/build/*" \
-  -not -path "*/.dart_tool/*" -not -path "*/dist/*" -not -path "*/target/*" \
-  -not -path "*/__pycache__/*" -not -path "*/.venv/*"
-```
-This catches images anywhere: test/goldens/ (Flutter golden tests), docs/design/, assets/, or wherever else they exist. Also check existing README for external image references.
+Use the images Phase 1j classified as usable. Reference them at the template's screenshot positions and read each one to write accurate alt text. For positions still uncovered:
+- **MUST position**: act on the Phase 2b Screenshots answer. Auto-capture: delegate to the screenshot sub-skill at skills/screenshot/SKILL.md. I'll add later (the default): insert descriptive placeholders. Point to files: use the paths the user gave.
+- **SHOULD/COULD position**: insert placeholders without asking.
+- **Minimal verbosity**: use found images only; no placeholders, no capture unless the user chose Auto-capture.
 
-Step 2 -- Look at each found image and decide if it belongs in a README. Not every image file is a screenshot. Read the image and judge:
-- **App screen / UI render** (dashboard, settings, feature view) → use it
-- **Diagram** (architecture, flowchart, pipeline) → use it
-- **Terminal output** (CLI help, command demo) → use it
-- **Logo** → use only in the title area, not as a screenshot
-- **Icon / sprite / texture / favicon** → skip, internal asset
-- **Diff image / coverage badge / test failure** → skip, test artifact
-- **Design mockup** → use if it represents the actual app, skip if it's a wireframe draft
+### 3e. TOC and navigation
 
-Only reference images that would help a reader understand what the project does or looks like. When in doubt, skip it.
+Generate a TOC only if the README exceeds 150 lines. Format: flat list of H2 headings, GitHub anchor style (lowercase, hyphens, strip special chars). Insert after description/badges, before first content section. Include H3s only if >10 H2 headings. Below 150 lines, a nav row under the description (`Docs • Demo • Install`) can stand in for it.
 
-Step 3 -- Branch:
-- **Usable screenshots found**: Use them. Reference at correct template positions. Read each image to write accurate alt text. If some MUST positions are still uncovered, treat those as "no assets."
-- **Only internal assets found (no screenshots)**: Treat as "no assets."
-- **No assets + template says MUST**: Ask the user: "(a) Auto-capture now, (b) Skip -- I'll leave placeholders, (c) I have images -- let me point you to them." If (a), delegate to screenshot sub-skill at skills/screenshot/SKILL.md. If (b), insert descriptive placeholders. If (c), user provides paths.
-- **No assets + template says SHOULD/COULD**: Skip silently. Insert placeholders without asking.
-
-### 3e. TOC
-
-Generate only if the README exceeds 150 lines. Format: flat list of H2 headings, GitHub anchor style (lowercase, hyphens, strip special chars). Insert after description/badges, before first content section. Include H3s only if >10 H2 headings.
+Exception: Educational / Awesome lists always get navigation, whatever their length, because the content is the README. Use a TOC, or a nav block of anchor links grouped by what the reader wants to do.
 
 ### 3f. Target length
 
@@ -293,7 +312,7 @@ Title+Logo, Badges, Tagline, `<!-- screenshot:hero -->`, Features, Download tabl
 Title+Logo, Badges, Description, Architecture diagram, Features, Getting Started, Install (binary/Docker/Helm/source), Config, Docs, Governance, Contributing, Security, License
 
 **Educational / Awesome:**
-Title, Badges, Description, TOC (mandatory), Content sections by topic, Contributing, License
+Title, Badges, Description, TOC or anchor nav block (mandatory, Phase 3e), Content sections by topic, Contributing, License
 
 **Browser Extension:**
 Title+Icon, Badges, Description, `<!-- screenshot:hero -->`, Install (per-browser store links), Supported Browsers, Features, Keyboard Shortcuts, Permissions/Privacy, Build from source, Contributing, License
@@ -391,7 +410,7 @@ If an existing README was replaced, note that the old version can be recovered v
 
 ## Anti-AI Writing Rules
 
-These rules are constraints applied DURING generation, not post-hoc. Internalize them before writing any prose.
+These rules are constraints applied DURING generation; Phase 4 then checks the draft again. Internalize them before writing any prose.
 
 ### Banned words (never use)
 
@@ -528,7 +547,7 @@ When detected: generate only Title, Description, Install (if any), Usage, Licens
 
 ### Monorepo
 Signals: workspaces in package.json, [workspace] in Cargo.toml, lerna.json, pnpm-workspace.yaml, packages/ or apps/ directory.
-When detected: ask "Generate README for the root monorepo or a specific package?" Root README adds a "Packages" section with table of sub-packages.
+When detected: ask "Generate README for the root monorepo or a specific package?" (Phase 2a question 4, counts toward the cap). Root README adds a "Packages" section with table of sub-packages.
 
 ### Name resolution
 Never use internal package identifiers (underscored, no spaces, all lowercase) as the README title. Follow the priority chain in Phase 1h.

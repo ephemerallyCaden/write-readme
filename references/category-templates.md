@@ -19,7 +19,7 @@
 | **ML/AI Model** | Model Card, Citation/BibTeX, Training instructions, Evaluation metrics |
 | **Desktop Application** | Platform compatibility table, Multi-store download table, Per-platform build |
 | **DevOps / Infrastructure** | Architecture diagram, Governance, Adopters, Configuration (YAML/HCL) |
-| **Educational / Awesome** | Content IS the README, TOC mandatory, Back-to-top links |
+| **Educational / Awesome** | Content IS the README, navigation mandatory (TOC or anchor nav block), Back-to-top links |
 | **Browser Extension** | Per-browser install links, Supported Browsers, Permissions/Privacy, Key bindings |
 | **API / Backend Service** | Client Libraries/SDK table, Request flow diagram, API Reference link |
 | **Mobile App** | Device screenshots, Store badges, Platform compatibility, Translation/Localization |
@@ -69,7 +69,7 @@ Standard-mode ranges. SKILL.md Phase 3f sets the minimal, early-stage, and detai
 | Contributing | MUST | SHOULD | SHOULD | MUST | SHOULD | SHOULD | SHOULD | MUST | MUST | MUST | SHOULD | MUST | MUST | MUST | SHOULD |
 | License | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST |
 
-*MUST if over 200 lines
+*MUST if over 150 lines
 
 ---
 
@@ -119,7 +119,7 @@ Title+Logo, Badges, Description, `<!-- screenshot:hero | format=gif -->`, TOC (i
 | Badges | SHOULD | |
 | Description | MUST | What it does, what it replaces |
 | Screenshot (GIF) | MUST | Animated demo of core command |
-| TOC | MUST* | *Required if >200 lines |
+| TOC | MUST* | *Required if >150 lines |
 | Install (multi-platform) | MUST | Homebrew, apt, cargo, pip, npm, binary |
 | Quick Start | MUST | One command that shows value |
 | Usage Examples | SHOULD | Progressive: basic, intermediate, piped |
@@ -336,7 +336,7 @@ Title+Logo, Badges, Description, Architecture diagram, Features, Getting Started
 ### 10. Educational / Awesome
 
 **Section ordering:**
-Title, Badges, Description, TOC (mandatory), Content sections by topic, Contributing, License
+Title, Badges, Description, TOC or anchor nav block (mandatory), Content sections by topic, Contributing, License
 
 **Section priorities:**
 
@@ -345,7 +345,7 @@ Title, Badges, Description, TOC (mandatory), Content sections by topic, Contribu
 | Title | MUST | |
 | Badges | SHOULD | |
 | Description | MUST | What the collection covers |
-| TOC | MUST | Always required -- content is long |
+| TOC | MUST | Always required -- content is long. A nav block of anchor links grouped by intent ("Build with agents") can replace a flat TOC |
 | Content sections | MUST | The content IS the README |
 | Contributing | MUST | Guidelines for adding content |
 | License | MUST | |
