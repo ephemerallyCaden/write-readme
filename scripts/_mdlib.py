@@ -19,6 +19,10 @@ MD_LINK_RE = re.compile(r"(?<!!)\[((?:[^\[\]]|!\[[^\]]*\]\([^)]*\))*)\]\(\s*<?([
 # _emphasis_ / __strong__ delimiters; intraword underscores (snake_case) stay
 UNDERSCORE_EMPHASIS_RE = re.compile(r"(?<![^\W_])(_{1,3})(?=\S)(.+?)(?<=\S)\1(?![^\W_])")
 
+# Label generate-toc.py prints above the TOC list. Not a heading, so the TOC
+# never becomes the first H2; validate-readme.py recognises it.
+TOC_LABEL = "**Contents**"
+
 # Header badges allowed before the first H2 (SKILL.md: 0-6). Shared by
 # generate-badges.py and validate-readme.py.
 MAX_HEADER_BADGES = 6

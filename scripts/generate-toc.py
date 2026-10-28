@@ -14,10 +14,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from _mdlib import collect_headings, parse_lines, unique_slugs
-
-
-TOC_LABEL = "**Contents**"
+from _mdlib import TOC_LABEL, collect_headings, parse_lines, unique_slugs
 
 
 def extract_headings(content: str) -> list[tuple[int, str, str]]:

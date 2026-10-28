@@ -106,7 +106,8 @@ class RunFirstTests(unittest.TestCase):
         for line in ["[Live demo](https://app.example.com)", "[Demo](https://app.example.com)",
                      "[Try it online](https://app.example.com)", "[Open app](https://app.example.com)",
                      "[![Demo](https://img.shields.io/badge/demo-online-blue)](https://app.example.com)",
-                     "Live demo: https://app.example.com", "- **Try it:** <https://app.example.com>"]:
+                     "Live demo: https://app.example.com", "- **Try it:** <https://app.example.com>",
+                     "[**Demo**](https://app.example.com)", "1. Demo: https://app.example.com"]:
             with self.subTest(line=line):
                 self.assertEqual(self.first(f"# T\n\n{line}\n"), (3, "hosted demo link"))
 
@@ -140,6 +141,13 @@ class RunFirstTests(unittest.TestCase):
         self.assertIn("Run-first", groups_for(without, "cli", "standard"))
         legacy = content.replace("**Contents**", "## Table of Contents")
         self.assertNotIn("Run-first", groups_for(legacy, "cli", "standard"))
+
+    def test_generate_toc_output_is_recognised(self):
+        headings = "".join(f"## S{i}\n" for i in range(30))
+        toc = subprocess.run([sys.executable, script_path("generate-toc.py")], input="# T\n\n" + headings,
+                             capture_output=True, text=True, check=True).stdout
+        lines = vr.parse_lines("# T\n\n" + toc + "\n```bash\nmake\n```\n")
+        self.assertEqual(vr.toc_line_count(lines, len(lines)), 32)
 
     def test_late_step_warns_standard(self):
         content = "# T\n\n" + padding(90) + "```bash\nmake\n```\n"
@@ -280,6 +288,8 @@ class PlaceholderTests(unittest.TestCase):
             "Logs INSERT, UPDATE and DELETE statements.",
             "Batches INSERT INTO rows.",
             "INSERT statements are queued.",
+            "Needs the INSERT PRIVILEGE and an INSERT TRIGGER.",
+            "Press INSERT KEY to toggle INSERT MODE.",
         ]:
             with self.subTest(text=text):
                 self.assertNotIn("Placeholder text", groups_for(f"# T\n\n{text}\n"))
@@ -379,8 +389,8 @@ class LengthTests(unittest.TestCase):
 
     def short(self, n: int, project_type: str | None, verbosity: str | None, **kwargs) -> list[str]:
         """Length notes (below-minimum) for an n-line README."""
-        return [n for n in notes_for(self.content(n), project_type, verbosity, **kwargs)
-                if n.strip().startswith("Length")]
+        return [note for note in notes_for(self.content(n), project_type, verbosity, **kwargs)
+                if note.strip().startswith("Length")]
 
     def test_standard_uses_table_range(self):
         self.assertEqual(self.length(150, "mobile", "standard"), [])

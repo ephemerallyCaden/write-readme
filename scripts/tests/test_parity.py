@@ -5,7 +5,6 @@ Run: python3 -m unittest discover -s scripts/tests -v
 """
 from __future__ import annotations
 
-import json
 import os
 import re
 import unittest
@@ -16,7 +15,6 @@ ca = load_script("check-anti-ai.py")
 vr = load_script("validate-readme.py")
 
 SKILL_MD = os.path.join(REPO, "SKILL.md")
-TYPE_SLUGS = os.path.join(REPO, "data", "type-slugs.json")
 DETECT = script_path("detect-project-type.sh")
 # Files whose checklist bullets may carry "(scripted)"
 SCRIPTED_DOCS = [SKILL_MD, os.path.join(REPO, "references", "anti-ai-rules.md")]
@@ -25,11 +23,6 @@ SCRIPTED_DOCS = [SKILL_MD, os.path.join(REPO, "references", "anti-ai-rules.md")]
 def read(path: str) -> str:
     with open(path, encoding="utf-8") as f:
         return f.read()
-
-
-def load_slugs() -> dict[str, dict]:
-    with open(TYPE_SLUGS, encoding="utf-8") as f:
-        return json.load(f)
 
 
 def markdown_table(text: str, heading: str) -> list[list[str]]:
@@ -44,7 +37,7 @@ def markdown_table(text: str, heading: str) -> list[list[str]]:
             rows.append([c.strip() for c in ln.strip().strip("|").split("|")])
         elif rows:
             break
-    return [r for r in rows[2:]]
+    return rows[2:]
 
 
 def split_names(label: str, names: dict[str, str]) -> list[str] | None:
@@ -68,11 +61,12 @@ def parse_range(value: str) -> list[int | None]:
 
 
 class LengthTargetParityTests(unittest.TestCase):
-    """SKILL.md "## Length Targets" == data/type-slugs.json == validate-readme.py."""
+    """SKILL.md "## Length Targets" == data/type-slugs.json (validate-readme.py's
+    LENGTH_TARGETS are checked against the JSON in test_validate_readme.py)."""
 
     def table_problems(self) -> tuple[list[str], list[str]]:
         """(value mismatches, label/coverage problems) between the table and the JSON."""
-        slugs = load_slugs()
+        slugs = vr.load_type_slugs()
         names = {entry["name"]: slug for slug, entry in slugs.items()}
         covered: dict[str, str] = {}
         values: list[str] = []
@@ -99,25 +93,21 @@ class LengthTargetParityTests(unittest.TestCase):
         values, labels = self.table_problems()
         self.assertEqual(values + labels, [])
 
-    def test_validator_uses_type_slugs(self):
-        slugs = load_slugs()
-        self.assertEqual(vr.LENGTH_TARGETS, {s: tuple(e["target_lines"]) for s, e in slugs.items()})
-
 
 class SlugSetParityTests(unittest.TestCase):
     def test_detect_outputs_match_type_slugs(self):
         outputs = set(re.findall(r'echo "([a-z-]+)"', read(DETECT)))
-        self.assertEqual(outputs, set(load_slugs()))
+        self.assertEqual(outputs, set(vr.load_type_slugs()))
 
     def test_detect_usage_lists_every_slug(self):
         usage = read(DETECT).split("to stdout:", 1)[1].split("USAGE", 1)[0]
         listed = set(re.findall(r"[a-z][a-z-]*", usage))
-        self.assertEqual(listed, set(load_slugs()))
+        self.assertEqual(listed, set(vr.load_type_slugs()))
 
     def test_skill_slug_table_matches_type_slugs(self):
         rows = markdown_table(read(SKILL_MD), "### Canonical type slugs")
         self.assertEqual({slug: name for name, slug in rows},
-                         {slug: e["name"] for slug, e in load_slugs().items()})
+                         {slug: e["name"] for slug, e in vr.load_type_slugs().items()})
 
 
 # Each "(scripted)" bullet in SCRIPTED_DOCS must match at least one key
@@ -152,7 +142,10 @@ def scripted_bullets() -> list[tuple[str, int, str]]:
 
 class ScriptedClaimTests(unittest.TestCase):
     def test_scripted_bullets_exist(self):
-        self.assertGreaterEqual(len(scripted_bullets()), 9)
+        # anti-ai-rules.md holds the "(scripted)" labels; SKILL.md is scanned
+        # too in case any appear there. Guards against a vacuous pass.
+        paths = [path for path, _, _ in scripted_bullets()]
+        self.assertGreaterEqual(paths.count(os.path.join("references", "anti-ai-rules.md")), 9)
 
     def test_every_scripted_bullet_maps_to_a_rule(self):
         unmapped = [f"{path}:{lineno}: {text}" for path, lineno, text in scripted_bullets()
@@ -172,7 +165,9 @@ class ScriptedClaimTests(unittest.TestCase):
         for path, lineno, text in scripted_bullets():
             rules = [rule for key, pairs in SCRIPTED_RULES if re.search(key, text, re.IGNORECASE)
                      for rule, _ in pairs if rule in ("chatbot-artifact", "template-phrase")]
-            for example in re.findall(r'"([^"]+)"', text) if rules else []:
+            if not rules:
+                continue
+            for example in re.findall(r'"([^"]+)"', text):
                 for token, word in fill.items():
                     example = example.replace(token, word)
                 with self.subTest(at=f"{path}:{lineno}", example=example):

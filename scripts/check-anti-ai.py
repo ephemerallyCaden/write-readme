@@ -83,9 +83,7 @@ def banned_word_pattern(word: str) -> re.Pattern[str]:
     return re.compile(r"\b(?:" + "|".join(alternatives) + r")\b")
 
 
-BANNED_WORD_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    (word, banned_word_pattern(word)) for word in BANNED_WORDS
-]
+BANNED_WORD_PATTERNS: list[re.Pattern[str]] = [banned_word_pattern(word) for word in BANNED_WORDS]
 
 # Chatbot artifacts (P1)
 CHATBOT_ARTIFACTS: list[str] = [
@@ -185,19 +183,19 @@ def is_reference_label(label: str) -> bool:
     return not re.search(r"\s", label) and ("/" in label or bool(re.search(r"\.\w", label)))
 
 
-def check_line(line: str, lineno: int, context: str | None = None) -> list[dict]:
+def check_line(line: str, lineno: int, context: str) -> list[dict]:
     """Line-level rules. Pass rendered prose (Line.prose): HTML comments and
     inline code removed. `context` is the raw line shown in findings."""
     findings: list[dict] = []
     lower = line.lower()
-    context = (line if context is None else context).strip()
+    context = context.strip()
 
     def add(severity: str, rule: str, text: str) -> None:
         findings.append({"line": lineno, "severity": severity, "rule": rule,
                          "text": text, "context": context})
 
     # P0: Banned words
-    for _, pattern in BANNED_WORD_PATTERNS:
+    for pattern in BANNED_WORD_PATTERNS:
         m = pattern.search(lower)
         if m:
             add("P0", "banned-word", m.group())

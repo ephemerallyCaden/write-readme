@@ -32,11 +32,13 @@ import sys
 from urllib.parse import parse_qs, unquote, urlparse
 
 from _mdlib import (
+    ATX_HEADING_RE,
     BULLET_RE,
     MAX_HEADER_BADGES,
     MD_IMAGE_RE,
     MD_LINK_RE,
     Heading,
+    TOC_LABEL,
     Line,
     collect_headings,
     github_slug,
@@ -52,8 +54,8 @@ TYPE_SLUGS_PATH = os.path.join(
 )
 
 
-def load_type_slugs(path: str = TYPE_SLUGS_PATH) -> dict[str, dict]:
-    with open(path, encoding="utf-8") as f:
+def load_type_slugs() -> dict[str, dict]:
+    with open(TYPE_SLUGS_PATH, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -81,11 +83,10 @@ PLACEHOLDER_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"\bTBD\b"),
     re.compile(r"\bFIXME\b"),
     re.compile(r"\bXXX\b"),
-    # INSERT followed by a colon or an all-caps token ("INSERT LOGO"), but not
-    # SQL ("INSERT INTO", "INSERT and UPDATE", "INSERT, UPDATE").
-    re.compile(r"\bINSERT(?::|\s+(?!(?:INTO|AND|OR|OVERWRITE|IGNORE|ALL|FIRST|DELAYED|"
-               r"LOW_PRIORITY|HIGH_PRIORITY|ON|UPDATE|DELETE|SELECT|UPSERT|MERGE|REPLACE|"
-               r"RETURNING|VALUES|STATEMENTS?|QUERY|QUERIES)\b)[A-Z][A-Z_]+\b)"),
+    # INSERT before a colon or a placeholder noun ("INSERT LOGO"). A closed
+    # list keeps SQL prose ("INSERT and UPDATE", "INSERT INTO") out.
+    re.compile(r"\bINSERT(?::|\s+(?:YOUR|PROJECT|LOGO|BANNER|SCREENSHOTS?|IMAGES?|GIF|"
+               r"LINKS?|URL|NAME|DESCRIPTION|TAGLINE|DEMO|BADGES?|TEXT|CONTENT|HERE)\b)"),
     re.compile(r"\bPLACEHOLDER\b"),
     re.compile(r"\bNEED TO ADD\b"),
     re.compile(r"\blink needed\b", re.IGNORECASE),
@@ -141,24 +142,16 @@ DEPLOY_URL_RE = re.compile(
     re.IGNORECASE,
 )
 # A link to a hosted instance: its label (or badge alt text) is Demo, Live,
-# Try it or Open app, or the line reads "Live demo: https://...".
+# Try it or Open app, as a Markdown link or a "Live demo: https://..." line.
 HOSTED_LABEL_RE = re.compile(
     r"^\s*(?:(?:live|online|hosted)\s+)?demo\W*$|^\s*live(?:\s+(?:site|app|version|instance))?\s*$|"
     r"^\s*try\s+it\b|^\s*open\s+(?:the\s+)?app\b",
     re.IGNORECASE,
 )
-HOSTED_LINE_RE = re.compile(
-    r"^\s*(?:[-*+]\s+)?(?:\*\*)?(?:(?:live|online|hosted)\s+demo|demo|live|try\s+it(?:\s+\w+)?|"
-    r"open\s+(?:the\s+)?app)(?:\*\*)?\s*:(?:\*\*)?\s*<?https?://",
-    re.IGNORECASE,
-)
-# A list or heading whose items are only in-page links, under a TOC label
-TOC_LABEL_RE = re.compile(
-    r"^\s*(?:\*\*|__)?(?:table\s+of\s+)?contents:?(?:\*\*|__)?\s*$"
-    r"|^\s{0,3}#{1,6}\s+(?:table\s+of\s+)?contents\s*#*\s*$",
-    re.IGNORECASE,
-)
-TOC_ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+\[[^\]]*\]\(#[^)\s]*\)\s*$")
+# "Live demo: https://...", optionally bold ("**Try it:** <https://...>")
+LABELLED_URL_RE = re.compile(r"^[*_]*([^:*_]{1,40}?)[*_]*:[*_]*\s*<?(https?://[^\s>]+)")
+TOC_TITLE_RE = re.compile(r"^(?:table\s+of\s+)?contents:?$", re.IGNORECASE)
+TOC_LINK_RE = re.compile(r"\[[^\]]*\]\(#[^)\s]*\)")
 # Files that mean a hardware repo has firmware to build and flash
 FIRMWARE_GLOBS = ["platformio.ini", "*.ino", "*/*.ino", "sdkconfig", "sdkconfig.defaults",
                   "west.yml", "CMakeLists.txt", "Makefile", "src/*.c", "src/*.cpp",
@@ -414,9 +407,14 @@ def find_first_runnable(lines: list[Line]) -> tuple[int, str] | None:
     return min((c for c in (block, link) if c), default=None)
 
 
-def link_label(label: str) -> str:
-    """Link text with nested badge images replaced by their alt text."""
-    return MD_IMAGE_RE.sub(lambda m: m.group(1), label)
+def labelled_urls(text: str) -> list[tuple[str, str]]:
+    """(rendered label, URL) for each Markdown link, plus a leading "Label: URL"."""
+    pairs = [(plain_heading_text(m.group(1)), m.group(2)) for m in MD_LINK_RE.finditer(text)]
+    bullet = BULLET_RE.match(text)
+    m = LABELLED_URL_RE.match(text[bullet.end() if bullet else 0:].strip())
+    if m:
+        pairs.append((m.group(1), m.group(2)))
+    return pairs
 
 
 def link_step(line: Line) -> tuple[int, str] | None:
@@ -427,16 +425,26 @@ def link_step(line: Line) -> tuple[int, str] | None:
         return line.lineno, "store link"
     if DEPLOY_URL_RE.search(text):
         return line.lineno, "deploy button"
-    if HOSTED_LINE_RE.match(text) or any(
-        urlparse(m.group(2)).scheme in ("http", "https") and HOSTED_LABEL_RE.search(link_label(m.group(1)))
-        for m in MD_LINK_RE.finditer(text)
-    ):
+    if any(urlparse(url).scheme in ("http", "https") and HOSTED_LABEL_RE.search(label)
+           for label, url in labelled_urls(text)):
         return line.lineno, "hosted demo link"
     if RELEASES_URL_RE.search(text) and (
         text.strip().startswith("|") or BULLET_RE.match(text) or DOWNLOAD_WORD_RE.search(text)
     ):
         return line.lineno, "download link"
     return None
+
+
+def is_toc_label(text: str) -> bool:
+    """generate-toc.py's label, or a Contents / Table of Contents label or heading."""
+    heading = ATX_HEADING_RE.match(text)
+    title = heading.group(2) if heading else plain_heading_text(text)
+    return text.strip() == TOC_LABEL or bool(TOC_TITLE_RE.match(title.strip()))
+
+
+def is_toc_item(text: str) -> bool:
+    bullet = BULLET_RE.match(text)
+    return bool(bullet) and bool(TOC_LINK_RE.fullmatch(text[bullet.end():].strip()))
 
 
 def toc_line_count(lines: list[Line], before: int) -> int:
@@ -448,14 +456,14 @@ def toc_line_count(lines: list[Line], before: int) -> int:
     count = 0
     i = 0
     while i < len(lines) and lines[i].lineno < before:
-        if lines[i].in_code or not TOC_LABEL_RE.match(lines[i].text):
+        if lines[i].in_code or not is_toc_label(lines[i].text):
             i += 1
             continue
         j = i + 1
         while j < len(lines) and not lines[j].text.strip() and not lines[j].in_code:
             j += 1
         items = j
-        while items < len(lines) and not lines[items].in_code and TOC_ITEM_RE.match(lines[items].text):
+        while items < len(lines) and not lines[items].in_code and is_toc_item(lines[items].text):
             items += 1
         if items > j:
             count += items - i
@@ -471,7 +479,7 @@ def has_firmware(base_dir: str) -> bool:
 
 def check_run_first(
     first: tuple[int, str] | None, project_type: str | None, verbosity: str | None,
-    lines: list[Line] | None = None, base_dir: str = ".",
+    lines: list[Line], base_dir: str,
 ) -> tuple[list[str], list[str]]:
     """(issues, notes) for the position of the first runnable step."""
     if project_type in RUN_FIRST_SKIP_TYPES:
@@ -484,7 +492,7 @@ def check_run_first(
         return ["  Run-first: no runnable step found (shell block, store badge, download link, "
                 "deploy button, or hosted demo link)"], []
     lineno, kind = first
-    toc = toc_line_count(lines or [], lineno)
+    toc = toc_line_count(lines, lineno)
     if lineno - toc > limit:
         excluding = f" (L{lineno - toc} excluding {toc} TOC lines)" if toc else ""
         return [f"  L{lineno}: first runnable step ({kind}) is past line {limit}{excluding} "

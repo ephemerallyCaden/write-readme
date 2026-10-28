@@ -69,7 +69,7 @@ class TocTests(unittest.TestCase):
                                 input="# T\n\n## Install\n\n### From source\n\n## Usage\n",
                                 capture_output=True, text=True, check=True)
         self.assertEqual(result.stdout, "**Contents**\n\n- [Install](#install)\n- [Usage](#usage)\n")
-        self.assertEqual([h for h in _mdlib.collect_headings(_mdlib.parse_lines(result.stdout))], [])
+        self.assertEqual(_mdlib.collect_headings(_mdlib.parse_lines(result.stdout)), [])
 
     def test_cli_h3_option(self):
         result = subprocess.run([sys.executable, script_path("generate-toc.py"), "--h3"],
