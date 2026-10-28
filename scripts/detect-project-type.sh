@@ -33,6 +33,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# The single-quoted regex of every has_pattern call below (one call per line,
+# after `if` or `&&`), read from this file before the cd so a relative script
+# path still resolves. scan_sources greps the tree for all of them at once;
+# has_pattern exits if it is given a regex that is not listed here.
+NL=$'\n'
+REGEXES=$(sed -nE "s/.*(if|&&)[[:space:]]+(! )?has_pattern '([^']*)'.*/\3/p" "${BASH_SOURCE[0]}")
+
 cd "$DIR"
 
 # Dependency, environment and build-output directories are never the
@@ -53,15 +60,43 @@ find_any() {
     find . -maxdepth "$depth" "${PRUNE[@]}" \( "$@" \) -print -quit 2>/dev/null | grep -q .
 }
 
-# Helper: search source files for an import/require pattern.
-# Uses grep -q (stops at the first match) rather than piping into head: under
-# pipefail, a grep killed by SIGPIPE after head exits made the check fail.
-has_pattern() {
-    grep -rqE "${GREP_EXCLUDES[@]}" --include='*.py' --include='*.js' --include='*.ts' --include='*.tsx' \
+# Every has_pattern check used to grep the whole tree, which took seconds on
+# large repos. Now the tree is grepped once, before Priority 3, for lines that
+# match any has_pattern regex, and each check greps only those lines. A line
+# matches a regex exactly when it is in that set, so results are unchanged.
+MATCHES=""
+trap 'rm -f "$MATCHES"' EXIT
+trap 'exit 1' HUP INT TERM
+
+scan_sources() {
+    # One alternation is faster than one -e per regex with BSD grep. Joining
+    # with | is safe: | binds loosest in an ERE, so each regex stays whole.
+    local union
+    union=$(printf '%s' "$REGEXES" | paste -sd'|' -)
+    MATCHES=$(mktemp "${TMPDIR:-/tmp}/detect-project-type.XXXXXX") || {
+        echo "detect-project-type.sh: cannot create a temp file" >&2; exit 1
+    }
+    # -a writes out matching lines from files grep treats as binary (a
+    # per-regex grep -q counted those as matches too) instead of a
+    # "Binary file matches" notice.
+    grep -rhaE "${GREP_EXCLUDES[@]}" --include='*.py' --include='*.js' --include='*.ts' --include='*.tsx' \
          --include='*.jsx' --include='*.rs' --include='*.go' --include='*.rb' \
          --include='*.java' --include='*.dart' --include='*.cs' --include='*.lua' \
          --include='*.toml' --include='*.cfg' --include='*.txt' \
-         -e "$1" . 2>/dev/null
+         -e "$union" . >"$MATCHES" 2>/dev/null || true
+}
+
+# Helper: search source files for an import/require pattern.
+# Uses grep -q on a file rather than piping into head: under pipefail, a grep
+# killed by SIGPIPE after head exits made the check fail.
+has_pattern() {
+    case "$NL$REGEXES$NL" in
+        *"$NL$1$NL"*) ;;
+        *) echo "detect-project-type.sh: has_pattern needs a single-quoted literal regex: $1" >&2; exit 1 ;;
+    esac
+    # No -a: if binary lines hold NUL bytes, grep treats this file as binary
+    # too and splits lines at NULs as it did for the original file (GNU grep).
+    [ -s "$MATCHES" ] && grep -qE -e "$1" "$MATCHES" 2>/dev/null
 }
 
 has_file() {
@@ -148,8 +183,19 @@ if find_any 2 -name '*.ino' -not -path './examples/*'; then
     echo "hardware"; exit 0
 fi
 
+scan_sources
+
 # --- Priority 3: Game / Interactive ---
 if has_file "project.godot"; then echo "game"; exit 0; fi
+# Unity projects have ProjectSettings/ and scenes under Assets/; Unreal has a
+# .uproject. Editor tooling packages also use UnityEngine but have no
+# Assets/, so the import only counts inside a project.
+if has_file "ProjectSettings/ProjectVersion.txt"; then echo "game"; exit 0; fi
+if has_dir "Assets" && find Assets "${PRUNE[@]}" -name '*.unity' -print -quit 2>/dev/null | grep -q .; then
+    echo "game"; exit 0
+fi
+if find_any 2 -name '*.uproject'; then echo "game"; exit 0; fi
+if has_dir "Assets" && has_pattern 'using\s+UnityEngine'; then echo "game"; exit 0; fi
 if has_pattern 'import\s+pygame|from\s+pygame|import\s+arcade|from\s+arcade'; then echo "game"; exit 0; fi
 if has_pattern 'import\s+raylib|from\s+raylib|use\s+bevy|bevy::prelude'; then echo "game"; exit 0; fi
 if has_pattern 'require.*love|love\.(graphics|physics|window)'; then echo "game"; exit 0; fi

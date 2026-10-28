@@ -70,7 +70,6 @@ def generate_badges(
 
     # 2. CI badge (if workflow provided)
     if ci_workflow and owner and repo:
-        workflow = ci_workflow.rstrip(".yml").rstrip(".yaml")
         workflow_file = ci_workflow if ci_workflow.endswith((".yml", ".yaml")) else f"{ci_workflow}.yml"
         url = (
             f"https://img.shields.io/github/actions/workflow/status/"
@@ -100,6 +99,34 @@ def generate_badges(
     return badges[:MAX_HEADER_BADGES]
 
 
+def missing_inputs(
+    owner: str | None,
+    repo: str | None,
+    ecosystem: str | None,
+    package: str | None,
+    license_name: str | None,
+    ci_workflow: str | None,
+) -> list[str]:
+    """Say, per badge, which input is absent. Used when no badge was generated."""
+    missing: list[str] = []
+    if not license_name:
+        missing.append("License: no --license (no LICENSE file)")
+    if not ci_workflow:
+        missing.append("CI: no --ci-workflow (no workflow file in .github/workflows/)")
+    elif not (owner and repo):
+        missing.append("CI: --ci-workflow needs --owner and --repo")
+    eco_lower = ecosystem.lower() if ecosystem else ""
+    if not ecosystem and not package:
+        missing.append("Version/Downloads: no --ecosystem/--package (not published to a registry)")
+    elif not ecosystem:
+        missing.append("Version/Downloads: --package needs --ecosystem")
+    elif eco_lower not in ECOSYSTEM_VERSION_URLS:
+        missing.append(f"Version/Downloads: unknown --ecosystem {ecosystem!r}")
+    elif not package:
+        missing.append("Version/Downloads: --ecosystem needs --package")
+    return missing
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generate shields.io badge markdown for a project."
@@ -118,17 +145,18 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    badges = generate_badges(
-        owner=args.owner,
-        repo=args.repo,
-        ecosystem=args.ecosystem,
-        package=args.package,
-        license_name=args.license_name,
-        ci_workflow=args.ci_workflow,
-    )
+    inputs = {
+        "owner": args.owner,
+        "repo": args.repo,
+        "ecosystem": args.ecosystem,
+        "package": args.package,
+        "license_name": args.license_name,
+        "ci_workflow": args.ci_workflow,
+    }
+    badges = generate_badges(**inputs)
 
     if not badges:
-        print("<!-- No badges generated. Provide --owner/--repo or --ecosystem/--package. -->",
+        print(f"<!-- No badges generated. {'; '.join(missing_inputs(**inputs))}. -->",
               file=sys.stderr)
         sys.exit(0)
 

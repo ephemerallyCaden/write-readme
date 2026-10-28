@@ -11,6 +11,7 @@
 > - SHOULD: include it in standard and detailed when the codebase supplies the content.
 > - COULD: include it in detailed, or in standard only when the content already exists (an existing README section, `docs/`).
 > - Title+Logo, Title+Icon, Title+Avatar: the title is always MUST; the image only when the repo has one (Phase 1j). Docs and API/Docs link rows marked MUST apply only when docs exist (a docs URL in the manifest or repo, or a `docs/` directory). With no logo or docs, leave it out; it is not a missing section.
+> - License is MUST in every template with no condition. When the project has no LICENSE file, the section is the one-line no-license section defined in SKILL.md Phase 2b, and that counts as present.
 > - Screenshot positions are the `<!-- screenshot:... -->` entries in an ordering. Their priority is the screenshot row of the priority table, or the `priority=` value in the placeholder.
 
 ---
@@ -212,13 +213,13 @@ Title+Logo, Badges, `<!-- screenshot:hero | format=gif -->`, Description, Featur
 | Section | Priority | Notes |
 |---|---|---|
 | Title+Logo | MUST | |
-| Badges | SHOULD | |
+| Badges | SHOULD | Engine projects have no registry: GitHub badges only, plus one static engine badge with the Phase 1a engine version (Unity 6000.0, Godot 4.3, Unreal 5.3). Add the engine badge even when there are no live badges (SKILL.md Phase 3c, step 5) |
 | Screenshot/Gameplay GIF | MUST | Gameplay mid-action, not title screen |
 | Description | MUST | Genre, core mechanic, platform |
 | Features | SHOULD | Game features, not technical features |
 | Download/Play | SHOULD | Pre-built binaries, itch.io, Steam links |
 | How to Play/Controls | SHOULD | Keybindings, controls table |
-| Install from source | SHOULD | For developers who want to build |
+| Install from source | SHOULD | For developers who want to build. With no release binaries it is the run section and comes first (Run-first rule); for Unity, Godot, and Unreal it is the numbered editor steps that rule describes |
 | Modding | COULD | If the game supports mods |
 | Community | SHOULD | Discord for multiplayer games |
 | Contributing | SHOULD | |

@@ -9,7 +9,8 @@ Checks:
   minimum is only a note, since padding is worse than a short README)
 - Title present (H1, or a banner image / <h1> at the top) and at most one H1
 - First runnable step (shell block, store badge, download link, deploy button,
-  hosted demo link) near the top; TOC lines before it are not counted
+  hosted demo link; for --type game also numbered engine run steps) near the
+  top; TOC lines before it are not counted
 - In-page anchors (#slug) match a heading or explicit anchor
 - No duplicate H2 headings
 - At most 6 badges before the first H2
@@ -150,6 +151,19 @@ HOSTED_LABEL_RE = re.compile(
 )
 # "Live demo: https://...", optionally bold ("**Try it:** <https://...>")
 LABELLED_URL_RE = re.compile(r"^[*_]*([^:*_]{1,40}?)[*_]*:[*_]*\s*<?(https?://[^\s>]+)")
+# Engine run steps (game type, SKILL.md Phase 3b): a numbered list in the first
+# H2 where one item opens the project or a scene and that item or a later one
+# presses Play. Unity and Unreal say Play; Godot says Run Project or F5.
+ENGINE_OPEN_VERB_RE = re.compile(r"\b(?:open|import|add|load|double-click)\b", re.IGNORECASE)
+ENGINE_OPEN_TARGET_RE = re.compile(
+    r"\b(?:scenes?|project|map|level|unity hub|epic games launcher)\b|\.(?:unity|tscn|scn|umap|uproject)\b",
+    re.IGNORECASE,
+)
+ENGINE_PLAY_RE = re.compile(
+    r"\b(?:press|click|hit|select|choose)\b.{0,40}?(?:\bplay\b|\brun project\b|\bF5\b|▶)|"
+    r"\benter play mode\b",
+    re.IGNORECASE,
+)
 TOC_TITLE_RE = re.compile(r"^(?:table\s+of\s+)?contents:?$", re.IGNORECASE)
 TOC_LINK_RE = re.compile(r"\[[^\]]*\]\(#[^)\s]*\)")
 # Files that mean a hardware repo has firmware to build and flash
@@ -393,8 +407,72 @@ def is_shell_block(lang: str, body: list[str]) -> bool:
     return token in COMMON_COMMANDS or token.startswith("./")
 
 
-def find_first_runnable(lines: list[Line]) -> tuple[int, str] | None:
-    """(line number, description) of the first runnable step, or None."""
+def section_lines(lines: list[Line], headings: list[Heading], i: int) -> list[Line]:
+    """Lines under headings[i], up to the next heading at the same or a higher level."""
+    h = headings[i]
+    end = next((n.lineno for n in headings[i + 1:] if n.level <= h.level), None)
+    return lines[h.lineno:end - 1 if end else None]  # lines[k].lineno == k + 1
+
+
+def is_numbered_item(text: str) -> bool:
+    m = BULLET_RE.match(text)
+    return bool(m) and m.group(0).strip()[0].isdigit()
+
+
+def ordered_lists(section: list[Line]) -> list[tuple[int, list[str]]]:
+    """Numbered lists as (first item's line number, item texts), continuation lines joined.
+
+    Blank lines and code blocks between items keep a list going, so a clone
+    block between step 1 and step 2 does not split the steps. A paragraph
+    after a blank line ends it.
+    """
+    lists: list[tuple[int, list[str]]] = []
+    start, items = 0, []
+    blank = False
+    for line in section:
+        if line.in_code:
+            continue
+        text = line.text
+        if is_numbered_item(text):
+            start = start or line.lineno
+            items.append(text.strip())
+        elif not text.strip():
+            blank = True
+            continue
+        elif items and (not blank or text.startswith((" ", "\t"))):
+            items[-1] += " " + text.strip()
+        elif items:
+            lists.append((start, items))
+            start, items = 0, []
+        blank = False
+    if items:
+        lists.append((start, items))
+    return lists
+
+
+def engine_run_steps(lines: list[Line], headings: list[Heading]) -> tuple[int, str] | None:
+    """The first numbered list in the first H2 that opens the project or a
+    scene and then presses Play, as (line of its first item, description)."""
+    first_h2 = next((i for i, h in enumerate(headings) if h.level == 2), None)
+    if first_h2 is None:
+        return None
+    for start, items in ordered_lists(section_lines(lines, headings, first_h2)):
+        opened = False
+        for text in items:
+            opened = opened or bool(ENGINE_OPEN_VERB_RE.search(text) and ENGINE_OPEN_TARGET_RE.search(text))
+            if opened and ENGINE_PLAY_RE.search(text):
+                return start, "engine run steps"
+    return None
+
+
+def find_first_runnable(
+    lines: list[Line], project_type: str | None = None, headings: list[Heading] | None = None,
+) -> tuple[int, str] | None:
+    """(line number, description) of the first runnable step, or None.
+
+    For the game type, numbered engine run steps (open the project or scene,
+    press Play) count too.
+    """
     block = next(
         ((start, f"```{lang} block" if lang else "shell block")
          for start, lang, body in iter_code_blocks(lines) if is_shell_block(lang, body)),
@@ -404,7 +482,10 @@ def find_first_runnable(lines: list[Line]) -> tuple[int, str] | None:
         (step for line in lines if not line.in_code and (step := link_step(line))),
         None,
     )
-    return min((c for c in (block, link) if c), default=None)
+    engine = None
+    if project_type == "game":
+        engine = engine_run_steps(lines, collect_headings(lines) if headings is None else headings)
+    return min((c for c in (block, link, engine) if c), default=None)
 
 
 def labelled_urls(text: str) -> list[tuple[str, str]]:
@@ -489,8 +570,10 @@ def check_run_first(
         if project_type == "hardware" and not has_firmware(base_dir):
             return [], ["  Run-first: no runnable step found; fine for a board-only hardware repo "
                         "(no firmware found in --dir)"]
+        engine = ", or numbered engine run steps that open a scene and press Play" \
+            if project_type == "game" else ""
         return ["  Run-first: no runnable step found (shell block, store badge, download link, "
-                "deploy button, or hosted demo link)"], []
+                f"deploy button, or hosted demo link{engine})"], []
     lineno, kind = first
     toc = toc_line_count(lines, lineno)
     if lineno - toc > limit:
@@ -668,10 +751,8 @@ def identify_license(text: str) -> str | None:
 
 def license_section(lines: list[Line], headings: list[Heading]) -> list[Line]:
     for i, h in enumerate(headings):
-        if not re.search(r"\blicen[cs]", h.text, re.IGNORECASE):
-            continue
-        end = next((n.lineno for n in headings[i + 1:] if n.level <= h.level), None)
-        return [ln for ln in lines if ln.lineno > h.lineno and (end is None or ln.lineno < end)]
+        if re.search(r"\blicen[cs]", h.text, re.IGNORECASE):
+            return section_lines(lines, headings, i)
     return []
 
 
@@ -713,7 +794,7 @@ def run_checks(
     """Return ([(group heading, issues)], first runnable step, notes)."""
     lines = parse_lines(content)
     headings = collect_headings(lines)
-    first = find_first_runnable(lines)
+    first = find_first_runnable(lines, project_type, headings)
     run_issues, run_notes = check_run_first(first, project_type, verbosity, lines, base_dir)
     length_issues, length_notes = check_length(lines, headings, project_type, verbosity, early_stage)
     groups = [

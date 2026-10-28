@@ -11,6 +11,8 @@ Generate a README.md by analyzing the current codebase, asking 0-3 questions, an
 
 `<skill-dir>` in the commands below is this skill's base directory; `references/`, `scripts/`, and `skills/` paths are relative to it.
 
+`<draft-dir>` is this run's own draft directory, so two runs at once never overwrite each other's files. Create it once, at the start of Phase 3 (Enhance Mode too), with `mktemp -d /tmp/write-readme-draft.XXXXXX`. Note the path it prints and write that literal path wherever `<draft-dir>` appears, through Phase 6 and every Phase 5 revision; shell variables don't carry over from one command to the next. Never run that `mktemp` again in the same run. The directory mirrors project paths: `<draft-dir>/assets/screenshots/hero.png` is copied to `assets/screenshots/hero.png` in Phase 6.
+
 Output: `README.md` at the project root. If one exists, ask whether to enhance or replace. Critique mode (below) edits an existing README instead of generating one.
 
 ## Invocation
@@ -30,13 +32,37 @@ Options (natural language or flags):
 
 Run all steps silently. No user interaction.
 
+`Glob:` lines are patterns for the Glob tool, and `Grep pattern:` lines are regexes for the Grep tool. Run them with those tools, never by pasting the patterns into a shell: zsh aborts the whole command when one wildcard matches nothing ("no matches found"). Without the Glob tool, run the `find` commands under each Glob block; they quote every pattern and behave the same in bash and zsh. Without the Grep tool, run `grep -rEn --exclude-dir=.git --exclude-dir=node_modules '<pattern>' .` with the pattern in single quotes.
+
 ### 1a. Detect manifests
 
 ```
-Glob: package.json, pyproject.toml, setup.py, setup.cfg, Cargo.toml, go.mod, Gemfile, *.gemspec, pom.xml, build.gradle, build.gradle.kts, CMakeLists.txt, Makefile, mix.exs, pubspec.yaml, composer.json, Package.swift, *.cabal, dune-project, platformio.ini
+Glob: package.json, pyproject.toml, setup.py, setup.cfg, Cargo.toml, go.mod, Gemfile, *.gemspec, pom.xml, build.gradle, build.gradle.kts, CMakeLists.txt, Makefile, mix.exs, pubspec.yaml, composer.json, Package.swift, *.cabal, dune-project, platformio.ini, library.properties, sketch.yaml
+Glob (engine and IDE project files, within 2 levels of the root): ProjectSettings/ProjectVersion.txt, project.godot, *.uproject, *.xcodeproj, *.xcworkspace, settings.gradle, settings.gradle.kts, *.sln, *.csproj, global.json
 ```
 
-Read each found manifest. Extract: name, version, description, license, dependencies, scripts, entry points, engine/runtime requirements. `python3 <skill-dir>/scripts/extract-metadata.py --dir <project-root>` prints those fields as JSON for the first manifest it recognises; use it as a starting point, and still read every manifest yourself, since it parses only one.
+"Within 2 levels" means at the root or in a directory at most two levels below it: with the Glob tool, run each pattern as `P`, `*/P`, and `*/*/P`. Shell equivalent:
+```bash
+find . -maxdepth 1 -type f \( -name package.json -o -name pyproject.toml -o -name setup.py -o -name setup.cfg -o -name Cargo.toml -o -name go.mod -o -name Gemfile -o -name '*.gemspec' -o -name pom.xml -o -name build.gradle -o -name build.gradle.kts -o -name CMakeLists.txt -o -name Makefile -o -name mix.exs -o -name pubspec.yaml -o -name composer.json -o -name Package.swift -o -name '*.cabal' -o -name dune-project -o -name platformio.ini -o -name library.properties -o -name sketch.yaml \)
+find . -maxdepth 3 -not -path '*/.git/*' -not -path '*/node_modules/*' \( -name project.godot -o -name '*.uproject' -o -name '*.xcodeproj' -o -name '*.xcworkspace' -o -name settings.gradle -o -name settings.gradle.kts -o -name '*.sln' -o -name '*.csproj' -o -name global.json \)
+find . -maxdepth 4 -not -path '*/.git/*' -not -path '*/node_modules/*' -path '*/ProjectSettings/ProjectVersion.txt'
+```
+
+Read each found manifest. Extract: name, version, description, license, dependencies, scripts, entry points, engine/runtime requirements. `python3 <skill-dir>/scripts/extract-metadata.py --dir <project-root>` prints those fields as JSON for the first manifest it recognises; use it as a starting point, and still read every manifest yourself, since it parses only one. It does not parse the engine and IDE project files (it prints nulls for a Unity project), so read those yourself.
+
+Engine and IDE project files are the manifest for projects that have no package manifest. Wherever this file says "manifest" (Phase 1g, Phase 2a, Phase 4), they count. Where each field comes from:
+
+| Project | Files | Name | Version | Engine / runtime |
+|---------|-------|------|---------|------------------|
+| Unity | `ProjectSettings/ProjectVersion.txt`, `ProjectSettings/ProjectSettings.asset`, `Packages/manifest.json` | `productName` in ProjectSettings.asset | `bundleVersion` in ProjectSettings.asset | Editor version from `m_EditorVersion` in ProjectVersion.txt; Unity packages and their versions from the `dependencies` object in `Packages/manifest.json`; start scene: the first `enabled: 1` entry in `ProjectSettings/EditorBuildSettings.asset` |
+| Godot | `project.godot` | `config/name` | `config/version` (Godot 4) | Engine version from `config/features` (`"4.3"`); start scene from `run/main_scene` |
+| Unreal | `*.uproject`, `Config/DefaultGame.ini`, `Config/DefaultEngine.ini` | `ProjectName` in DefaultGame.ini, else the `.uproject` file name | `ProjectVersion` in DefaultGame.ini | Engine version from `EngineAssociation` (`"5.3"`); C++ modules and plugins from `Modules` and `Plugins`; start map from `EditorStartupMap` or `GameDefaultMap` in DefaultEngine.ini |
+| Xcode | `*.xcodeproj/project.pbxproj`, `*.xcworkspace` | Target names, `PRODUCT_NAME` | `MARKETING_VERSION` (`CURRENT_PROJECT_VERSION` is the build number) | `IPHONEOS_DEPLOYMENT_TARGET` / `MACOSX_DEPLOYMENT_TARGET`, `SWIFT_VERSION`; a workspace beside a `Podfile` means `pod install` comes first |
+| Android Gradle | `settings.gradle(.kts)`, the app module's `build.gradle(.kts)`, `gradle/libs.versions.toml` | `rootProject.name`; `include(...)` lists the modules | `versionName` in the app module | `minSdk`, `targetSdk`, `compileSdk` in the app module; Android Gradle Plugin and Kotlin versions from `libs.versions.toml` |
+| .NET | `*.sln`, `*.csproj`, `Directory.Build.props`, `global.json` | `AssemblyName` or `PackageId`, else the `.csproj` file name | `Version` | `TargetFramework` / `TargetFrameworks` (`net8.0`), `OutputType` (`Exe`, `WinExe`, `Library`); SDK pin from `global.json` |
+| Arduino / PlatformIO | `library.properties`, `sketch.yaml`, `platformio.ini` | `name`, else the sketch folder name | `version` in library.properties | `architectures` (library.properties), `fqbn` and core versions per profile (sketch.yaml), `platform`, `board`, and `framework` per `[env:...]` (platformio.ini) |
+
+Unity's `Packages/manifest.json` has only that one top-level field and is not a browser-extension manifest. Unity also writes `*.csproj` and `*.sln` files for the IDE (usually gitignored); when `ProjectSettings/ProjectVersion.txt` exists, treat them as generated, not as a .NET project.
 
 ### 1b. Detect project type
 
@@ -48,7 +74,7 @@ Use the unified taxonomy below. First match wins (lowest priority number). Perso
 |-----|------|-------------------|
 | 1 | Personal config / dotfiles | Repo name contains `dotfiles` and no package manifest; dotfile-manager files (`.chezmoiroot`, `dot_*` entries, dotbot `install.conf.yaml`, `.stow-local-ignore`); Home Assistant `configuration.yaml` with `automations.yaml` or a `homeassistant:` key; or 3+ personal rc files at the root (`.zshrc`, `.bashrc`, `.vimrc`, `.tmux.conf`, `.gitconfig`, dotted or not) and no package manifest |
 | 2 | Hardware / Embedded | Within 2 levels of the root: `platformio.ini`, `*.ino` outside `examples/`, KiCad files (`*.kicad_pro`, `*.kicad_pcb`, `*.kicad_sch`), `BOM.csv` |
-| 3 | Game / Interactive | `project.godot`, pygame/arcade/raylib/bevy/love2d imports, Phaser/PixiJS/Babylon imports, game asset dirs (sprites/, levels/, textures/) |
+| 3 | Game / Interactive | Unity (`ProjectSettings/ProjectVersion.txt`, `*.unity` scenes under `Assets/`), Godot (`project.godot`), Unreal (`*.uproject`), pygame/arcade/raylib/bevy/love2d imports, Phaser/PixiJS/Babylon imports, game asset dirs (sprites/, levels/, textures/) |
 | 4 | Visual Output / CV | cv2/mediapipe/dlib imports + VideoCapture/imwrite/landmark/bounding.box. Also: matplotlib/plotly/d3/chart.js/bokeh/seaborn with data pipeline (Data Viz subtype) |
 | 5 | Generative AI | diffusers/StableDiffusion/comfyui imports. Uses Visual Output template. |
 | 6 | Bot | discord.py/discord.js/telegram/slack-bolt/botfather imports, bot token patterns |
@@ -73,6 +99,12 @@ Use the unified taxonomy below. First match wins (lowest priority number). Perso
 Glob: LICENSE*, CONTRIBUTING*, CODE_OF_CONDUCT*, SECURITY*, CHANGELOG*, CHANGES*, HISTORY*, .github/FUNDING.yml, .github/workflows/*, GOVERNANCE*, ROADMAP*, ARCHITECTURE*, docs/
 Glob: AGENTS.md, llms.txt, CLAUDE.md
 Glob: Dockerfile, docker-compose*, .dockerignore
+```
+
+Shell equivalent of the three Glob lines:
+```bash
+find . -maxdepth 1 \( -name 'LICENSE*' -o -name 'CONTRIBUTING*' -o -name 'CODE_OF_CONDUCT*' -o -name 'SECURITY*' -o -name 'CHANGELOG*' -o -name 'CHANGES*' -o -name 'HISTORY*' -o -name 'GOVERNANCE*' -o -name 'ROADMAP*' -o -name 'ARCHITECTURE*' -o -name docs -o -name AGENTS.md -o -name llms.txt -o -name CLAUDE.md -o -name Dockerfile -o -name 'docker-compose*' -o -name .dockerignore \)
+find . -maxdepth 3 \( -path ./.github/FUNDING.yml -o -path './.github/workflows/*' \)
 ```
 
 Grep for env vars:
@@ -119,26 +151,76 @@ If README.md exists, read it. Classify each H2 section as auto-generatable, huma
 
 These are the only detection signals; Special Detection below says what to do when each one fires.
 
-**Solo project:** one contributor (`git shortlog -sn HEAD`), fewer than 5 stars when the count is known, and no CONTRIBUTING.md.
+**Solo project:** one contributor (counted as below), fewer than 5 stars when the count is known, and no CONTRIBUTING.md.
+
+Count contributors with this command from the project root. It reads `git shortlog -sne HEAD` (which applies `.mailmap`), drops bot authors (a name ending in `[bot]`, a `[bot]@` email, `noreply@github.com`), treats entries that share a name or an email (case-insensitive) as one person, and ignores anyone with under 10% of the remaining commits, such as a one-off demo commit. It prints the count, a tab, and, when the count is 1, that contributor's name as spelled on most of their commits (the solo author). With no git history it prints 1 and no name.
+```bash
+python3 - <<'EOF'
+import re, subprocess
+out = subprocess.run(["git", "shortlog", "-sne", "HEAD"], capture_output=True, text=True).stdout
+people = []  # [names, emails, commits, (commits, spelling)]; entries sharing a name or an email are one person
+for count, name, email in re.findall(r"^\s*(\d+)\t(.*?) <(.*)>$", out, re.M):
+    key, email = name.strip().lower(), email.strip().lower()
+    if key.endswith("[bot]") or "[bot]@" in email or email == "noreply@github.com":
+        continue
+    person = [{key}, {email}, int(count), (int(count), name.strip())]
+    for p in [p for p in people if p[0] & person[0] or p[1] & person[1]]:
+        person = [person[0] | p[0], person[1] | p[1], person[2] + p[2], max(person[3], p[3])]
+        people.remove(p)
+    people.append(person)
+total = sum(p[2] for p in people)
+kept = [p for p in people if p[2] * 10 >= total]
+print(len(kept) if total else 1, kept[0][3][1] if len(kept) == 1 else "", sep="\t")
+EOF
+```
+
 **Academic:** .university or .edu in manifest groupId/org, assessment brief files (instructions.md, brief.md, assignment.md), course module codes in repo name. Research write-up subtype: a paper or report in the repo (`paper/*.tex`, `report.pdf`, `thesis.pdf`), or an Academic project whose main output is notebooks plus a `results/` or `figures/` directory.
 **GitHub Pages:** CNAME file at root, .nojekyll, raw index.html with no manifest, gh-pages branch.
-**Early-stage:** No manifest OR manifest has <3 fields OR <5 source files. Personal config and Hardware repos rarely have a manifest, so for them only the file count applies (config files, sketches, schematics, and BOMs count).
-**Monorepo:** workspaces in package.json, [workspace] in Cargo.toml, lerna.json, pnpm-workspace.yaml, packages/ or apps/ directory.
+**Early-stage:** decided by size and history, measured as below. A missing manifest is not enough on its own.
+
+Source files are tracked files in a programming, scripting, or shader language, leaving out dependency, build-output, and engine cache directories, Unity's vendored `Assets/Plugins/` and `Assets/TextMesh Pro/`, engine metadata (Unity `.meta`, Godot `.import` and `.uid`), and minified files. Run this block as one command from the project root. It lists them in a fresh temp file, measures, and deletes the file:
+```bash
+src=$(mktemp)
+{ git ls-files 2>/dev/null || find . -type f -not -path './.git/*'; } \
+  | grep -Ev '(^|/)(node_modules|vendor|third_party|dist|build|target|\.?venv|__pycache__|Pods|\.godot|Intermediate|Saved|DerivedDataCache|Binaries)/|^(\./)?(Library|Temp|Obj|Logs|UserSettings|Assets/Plugins|Assets/TextMesh Pro)/|\.(meta|import|uid)$|\.min\.js$' \
+  | grep -E '\.(py|js|jsx|mjs|cjs|ts|tsx|vue|svelte|go|rs|c|h|cc|cpp|hpp|m|mm|swift|kt|kts|java|scala|cs|fs|gd|shader|cginc|hlsl|glsl|lua|rb|php|ex|exs|hs|ml|dart|zig|ino|sh)$' > "$src"
+wc -l < "$src"                                  # source files
+tr '\n' '\0' < "$src" | xargs -0 cat | wc -l  # source lines
+git rev-list --count HEAD 2>/dev/null           # commits
+git tag 2>/dev/null | wc -l                     # tags
+rm -f "$src"
+```
+Count GitHub releases too when the release list is known. Then apply, in order:
+1. Fewer than 5 source files: Early-stage.
+2. Otherwise count the maturity signals that hold: 10+ source files; 500+ source lines; 10+ commits; at least one git tag or GitHub release; a Phase 1a manifest (engine and IDE project files included) that gives the project's name and also a version or description. A shallow clone (`git rev-parse --is-shallow-repository` prints `true`) or a directory with no git leaves the two git signals unmet.
+3. Fewer than 2 signals: Early-stage. Two or more: not Early-stage.
+
+Personal config and Hardware repos are judged on file count alone, because their files are mostly not code: config files, sketches, schematics, and BOMs count as source files, step 1 applies, and steps 2 and 3 are skipped.
+
+**Monorepo:** workspaces in package.json, [workspace] in Cargo.toml, lerna.json, pnpm-workspace.yaml, packages/ or apps/ directory (not Unity's `Packages/`, which holds `manifest.json`, its lock file, and any embedded Unity packages).
 **Sibling packages:** the manifest declares both a library and a binary (Cargo `[lib]` + `[[bin]]`, package.json `exports`/`main` + `bin`), or the monorepo, manifest, or docs point to a `-cli` / `-core` sibling of this package.
 **Agent resources:** AGENTS.md, llms.txt, or CLAUDE.md at the root, or a package or entry point that starts an MCP server.
-**Component count:** workspace members (Cargo, npm, or pnpm workspaces, `go.work`), entries under `apps/` and `packages/`, or top-level directories with their own manifest or package marker (`__init__.py`, `mod.rs`, `index.ts`). 3+ shows the ARCHITECTURE.md line in Phase 2b.
+**Component count:** workspace members (Cargo, npm, or pnpm workspaces, `go.work`), entries under `apps/` and `packages/` (not Unity's `Packages/`), or top-level directories with their own manifest or package marker (`__init__.py`, `mod.rs`, `index.ts`). 3+ shows the ARCHITECTURE.md line in Phase 2b.
 
 ### 1h. Name resolution
 
-Priority chain for display name:
-1. App display name (AndroidManifest.xml android:label, Info.plist CFBundleDisplayName, MaterialApp title)
-2. Manifest human-readable name (skip if it looks like a code identifier: underscores, no spaces, all lowercase)
-3. Repo name from git remote
-4. Directory name
+The title is the first candidate in this chain that exists and is not skipped:
+1. Display name, the name users see in the running app: AndroidManifest.xml `android:label` (resolved from `strings.xml`), Info.plist `CFBundleDisplayName`, Flutter `MaterialApp(title: ...)`, Unity `productName` in `ProjectSettings/ProjectSettings.asset`, Godot `config/name` in `project.godot`, Unreal `ProjectName` in `Config/DefaultGame.ini`.
+2. Manifest name: `name` in package.json, pyproject.toml, Cargo.toml, and the other Phase 1a manifests, and for project files without a display name the Phase 1a Name column (the `.uproject` file name, `PRODUCT_NAME`, `rootProject.name`, `AssemblyName`).
+3. Repo name from `git remote get-url origin`.
+4. Directory name.
 
-Never use an internal package identifier (underscored, no spaces, all lowercase) as the title.
+Skip a candidate when either holds:
+- It is a code identifier: it contains no spaces, and it also meets at least one of these (any one is enough): it contains `_`, `.`, `/`, or `@` (`climb_log`, `com.example.app`, `@scope/pkg`); it has no uppercase letter (`tinysim`, `climb-log`). `TinySimProject`, `Climb Log`, and `my tool` are not identifiers.
+- It is an engine's default for a new project: Unity `My project` (with or without a ` (N)` suffix) or `New Unity Project`, Godot `New Game Project`, Unreal `MyProject`.
 
-If two human-readable candidates disagree (app label "Ganba" vs manifest name "Climb Log"), that is Phase 2a question 5. Otherwise use the highest-priority candidate.
+If every candidate is skipped, use the first one that exists, exactly as written (`ripgrep`).
+
+A name's normalized form is the name lowercased with spaces, hyphens, and underscores removed (`Climb Log`, `climb-log`, and `climb_log` all normalize to `climblog`). Two candidates are the same name when their normalized forms are equal.
+
+Repo-name exception, applied before the chain picks the title. Let R be candidate 3, or candidate 4 when there is no git remote. If R is not skipped, check candidates 1 and 2: when a candidate's normalized form ends in `project`, `game`, or `app`, and removing that one suffix leaves exactly R's normalized form, replace the candidate with R as written. Display name `TinySimProject` with repo `TinySim` gives `TinySim`; `TinySim Game` and `tinysim-app` match the same repo. Only one trailing suffix is removed, and a skipped R never replaces anything (repo `tinysim` leaves `TinySimProject` as the title).
+
+Ask Phase 2a question 5 only when candidates 1 and 2 both exist after the exception, neither is skipped, and they are not the same name (display name "Ganba" vs manifest name "Climb Log"). Otherwise a repo or directory name never triggers the question: display name `Starfall` is the title even when the repo is `Skyline`.
 
 ### 1i. Supplementary docs
 
@@ -188,6 +270,7 @@ Grep pattern (telemetry SDKs): (posthog|@segment/|analytics-node|segment\.io|sen
 Grep pattern (LLM providers): (OPENAI_API_KEY|ANTHROPIC_API_KEY|GEMINI_API_KEY|GOOGLE_API_KEY|MISTRAL_API_KEY|COHERE_API_KEY|GROQ_API_KEY|OPENROUTER_API_KEY|AZURE_OPENAI|api\.openai\.com|api\.anthropic\.com)
 Glob: **/PrivacyInfo.xcprivacy
 ```
+Shell equivalent of the Glob line: `find . -name PrivacyInfo.xcprivacy -not -path '*/.git/*' -not -path '*/node_modules/*' -not -path '*/Pods/*'`.
 
 Also record: version bounds from 1a (`engines`, `requires-python`, `rust-version`, SDK constraints, the `go` directive), `os` / `cpu` fields in package.json, the CI OS matrix (`runs-on`, `matrix.os` in `.github/workflows/*`), and dependencies that exist for one platform only (`pyobjc`, `pywin32`, `[target.'cfg(windows)'.dependencies]`, `sys_platform ==` markers). A telemetry hit counts only where the SDK is initialised in this project's code. Skip the data-flow evidence when sending data is the product (the repo is the analytics SDK or an LLM client library).
 
@@ -200,7 +283,7 @@ A required question is one with no safe default. These are the only ones, wherev
 2. "Describe your project in 1-2 sentences -- what does it do and who is it for?" -- SKIP if manifest description >10 words AND no existing README. If cut: infer from manifest and code.
 3. "This looks like both a [type A] and [type B]. Which is its primary identity?" -- only if type detection is ambiguous. If cut: the lower priority number wins.
 4. If monorepo: "Generate README for the root monorepo or a specific package?" If cut: root.
-5. "Should the title be [A] or [B]?" -- only if Phase 1h found two human-readable names that disagree. If cut: the higher candidate in the Phase 1h chain.
+5. "Should the title be [A] or [B]?" -- only if Phase 1h found a display name and a manifest name that differ (its rule says exactly when). If cut: the Phase 1h title.
 
 Hard cap: 3 required questions. After 3, use the "If cut" default for the rest. The optional choices block in 2b does not count toward the cap, because every item in it has a default.
 
@@ -236,6 +319,20 @@ Before I generate, a few quick choices (press Enter to skip any):
 
 Unanswered choices use defaults. "Go", "just do it", or Enter accepts all defaults.
 
+License: "one exists" means a `LICENSE*`, `LICENCE*`, or `COPYING*` file at the project root. Keep current: the License section names that license and links the file. Skip never removes the section, because License is MUST in every template; it produces this exact one-line section:
+```markdown
+## License
+
+This repository has no license file, so default copyright applies: ask the author before reusing the code.
+```
+If a manifest declares a license but no file exists (`license` in package.json, pyproject.toml, or Cargo.toml), the line names it instead: "MIT, as declared in `package.json`. The repository has no LICENSE file." The Phase 5 summary lists either case under Warnings.
+
+Picking MIT, Apache-2.0, or GPL-3.0 when no license file exists adds a second file: Phase 6 writes `LICENSE` at the project root beside README.md, and the License section names the license and links `LICENSE`. Only an explicit pick does this. Skip stays the default, and "go", Enter, or an unanswered block never picks a license on the user's behalf. When a license file already exists, a pick changes nothing: the file is never overwritten, the README names the existing license, and the Phase 5 summary warns that the pick was not applied. Build the file in `<draft-dir>/LICENSE` from the unmodified text in `<skill-dir>/references/licenses/` (`MIT.txt`, `Apache-2.0.txt`, `GPL-3.0.txt`), and fill placeholders only in that copy:
+- MIT: replace `[year]` with the current year (`date +%Y`) and `[fullname]` with the copyright holder.
+- Apache-2.0 and GPL-3.0: copy the text unchanged. Their `[yyyy] [name of copyright owner]` and `<year> <name of author>` fields sit in the closing "how to apply" notice, which Apache and the FSF say to fill in source-file headers, not in the license file.
+
+The copyright holder is the solo author's name that the Phase 1g contributor count prints, else `git config user.name`. If neither gives a name, the Phase 5 summary says so, and Phase 6 writes LICENSE only after the user names the holder.
+
 The ARCHITECTURE.md offer is never asked as a separate question. If the user picks Detailed here and the line wasn't shown, note in the Phase 5 summary that ARCHITECTURE.md is available on request (unless the project is Early-stage or one already exists).
 
 ### Verbosity levels
@@ -245,7 +342,7 @@ The ARCHITECTURE.md offer is never asked as a separate question. If the user pic
 - Skips: badges, features, TOC, contributing, community, sponsors, architecture
 - No screenshot placeholders
 - Target: 30-80 lines, whatever the type (overrides the Length Targets table)
-- Triggered by: "minimal", "short", "quick", "simple", "brief", or <5 source files
+- Triggered by: "minimal", "short", "quick", "simple", "brief", or fewer than 5 source files (counted as in Phase 1g)
 
 **standard** (default) -- Balanced README. Most projects.
 - Includes: all MUST sections + SHOULD sections where data is available
@@ -271,14 +368,15 @@ Read the detected type's entry in `references/category-templates.md`: its sectio
 Follow the template ordering, with one override:
 
 **Run-first rule.** The first H2 is how to get the project running (heading: "Getting Started", "Quick Start", "Install", "Download", or "Local Development" for static sites). What counts as running depends on the type:
-- Install + the command that runs, plays, or imports it: CLI, TUI, Library, ML, CV, Gen AI, Bot, DevOps, Game without release binaries, Other.
+- Install + the command that runs, plays, or imports it: CLI, TUI, Library, ML, CV, Gen AI, Bot, DevOps, Game without release binaries that runs from a command (pygame, Bevy, LÖVE), Other.
+- Numbered steps in the engine editor, since no shell command runs the project: Unity, Godot, and Unreal projects without release binaries. The prerequisites line names the editor and the exact version from Phase 1a ("Requires Unity 6000.0.74f1."). Then: open the project (Unity Hub: Add, then pick the folder; Godot Project Manager: Import, then pick `project.godot`; Unreal: open the `.uproject`), open the start scene or map from Phase 1a by path, and press Play (Godot: Run Project, F5). A `git clone` block may come first.
 - A scaffold or template command that installs and runs in one step (`npm create ...`, `dotnet new ...`, `go run ...@latest`): Framework, Docs Site, project generators. A Framework with no scaffold command uses install + import instead.
 - A per-OS download table or store badges: Desktop, Mobile, Browser Extension, and Game when release binaries exist. Build-from-source steps go later.
 - A hosted URL or one-click deploy button, followed by self-host commands: Web App, API, and Docs Site when a hosted version exists.
 - No release, store, or hosted evidence (Desktop, Mobile, Browser Extension, Web App, API): build-from-source or self-host commands. Never invent a store link, download, or URL.
 - Build and flash the firmware (`pio run -t upload`, `arduino-cli upload`), with the parts list linked from the prerequisites line: Hardware. A board-only repo (no firmware) points to its fabrication outputs (gerbers, BOM, placement files) instead.
 
-Before it, allow only: title, badges, description (≤2 sentences, plus a router line if Special Detection calls for one), hero image, nav row, the `**Contents**` TOC (Phase 3e). Features, Architecture, Model tables, Sponsors, and everything else go after it. Prerequisites go inside the run section as its first line ("Requires Flutter 3.12+."), never as their own section before or after it. Keep the first command, download table, store badge, or hosted URL within the first 80 lines (50 in minimal).
+Before it, allow only: title, badges, description (≤2 sentences, plus a router line if Special Detection calls for one), hero image, nav row, the `**Contents**` TOC (Phase 3e). Features, Architecture, Model tables, Sponsors, and everything else go after it. Prerequisites go inside the run section as its first line ("Requires Flutter 3.12+."), never as their own section before or after it. Keep the first command, engine run steps, download table, store badge, or hosted URL within the first 80 lines (50 in minimal).
 
 Library / Package: a code snippet of 10 lines or fewer may precede the install line inside the first H2.
 
@@ -286,9 +384,11 @@ Research write-up (Special Detection): a Results section (the key figure and met
 
 Exempt: Educational / Awesome lists, personal config / dotfiles repos (a browse index with nothing to install), and ARCHITECTURE.md.
 
-**Expected result.** End the Quick Start with what the reader should see: the URL and port for servers (read from config or framework defaults), the `--help` or `--version` output for CLIs (Phase 1c already ran `--help`), the generated file or folder for generators, the serial baud rate and first log line for firmware (from `Serial.begin(...)` and the setup code), or a `// =>` result comment for libraries only when a test fixture confirms the value. Never invent output. If nothing is verifiable, end on the command.
+**Expected result.** End the Quick Start with what the reader should see: the URL and port for servers (read from config or framework defaults), the `--help` or `--version` output for CLIs (Phase 1c already ran `--help`), the generated file or folder for generators, the serial baud rate and first log line for firmware (from `Serial.begin(...)` and the setup code), the screen the start scene opens on for engine projects (from its UI objects and the scripts that run on load), or a `// =>` result comment for libraries only when a test fixture confirms the value. Never invent output. If nothing is verifiable, end on the command.
 
 **Install chooser.** When a CLI, Desktop app, Library, or DevOps tool ships through several channels, show one primary method expanded and marked "(Recommended)": the one the project's own docs lead with, else the ecosystem's package manager. Give every other method a one-line "Use this if ..." and put them in `<details>` when there are more than 3. Detect channels from `Formula/` or a tap reference, `snapcraft.yaml`, `*.nuspec`, `flake.nix`, `Dockerfile`, `.goreleaser.yml`, release workflow artifacts, and `pyproject.toml` extras. List only channels with evidence.
+
+**Configuration defaults.** In a Config section, env vars table, or settings table, the default for each key is the value a fresh clone runs with. When a committed config asset sets the key and the code's own default (a C# field initializer, `os.getenv("PORT", "8000")`, a struct default) disagrees, report the asset's value, because the asset is what runs: a Unity ScriptableObject `.asset`, a scene or prefab field, or a YAML, JSON, TOML, or INI config file the code loads. `.env.example` counts only when the run steps copy it to the file the code reads (`cp .env.example .env`); otherwise the code default runs. Label the source in the column header or the line ("Default (from `Assets/Settings/GameConfig.asset`)"), and when the code default differs, add it in the same row: "`8` (code default: `5`)".
 
 **Limitations.** Build them only from Phase 1k evidence. Version floors belong on the prerequisites line; limitations are upper bounds and exclusions, OS gates that exit or raise, `NotImplementedError` / `unimplemented!()` / `todo!()` on public paths, and one-platform-only dependencies. A CI matrix without an OS makes that OS untested, not unsupported, unless code also gates it. Each item names its evidence: "Windows is not supported (`main.py` exits when `sys.platform == "win32"`; CI runs Linux and macOS only)." One item: a "Not supported: ..." (or "Untested: ...") line in the run section, right after the prerequisites line. Two or more: a `## Limitations` section (SHOULD) after Usage and Config, before Contributing. No evidence: no section and no line, never "No known limitations". Never collapse it in `<details>`.
 
@@ -304,25 +404,26 @@ Before writing prose, read `references/anti-ai-rules.md`, and apply the Anti-AI 
 
 ### 3c. Generate badges
 
-1. Parse owner/repo from `git remote get-url origin` (`github.com/{owner}/{repo}`). No git remote, or a private repo: skip all shields.io badges.
+1. Parse owner/repo from `git remote get-url origin` (`github.com/{owner}/{repo}`). No git remote, or a private repo: skip steps 2-3, whose live badges query GitHub or a registry. Steps 4 and 5 still apply.
 2. Detect the registry and take the package name from the manifest: package.json -> `npm` | pyproject.toml/setup.py -> `pypi` | Cargo.toml -> `crates.io` | go.mod -> `go` | Gemfile/gemspec -> `rubygems` | pubspec.yaml -> `pub.dev` | composer.json -> `packagist` | pom.xml/build.gradle -> `maven` | mix.exs -> `hex.pm` | *.cabal -> `hackage` | no match -> GitHub-only badges.
 3. Generate the row (flat style, in the order License, CI, Version, Downloads):
    ```bash
    python3 <skill-dir>/scripts/generate-badges.py --owner <owner> --repo <repo> --license <SPDX id> --ci-workflow <file> --ecosystem <registry> --package <name>
    ```
-   Pass a flag only with real data behind it: `--license` only with a LICENSE file, `--ci-workflow` only for a file that exists in `.github/workflows/`, and `--ecosystem` with `--package` only when the package is published (they add the Version and Downloads badges).
-4. Add a Community badge by hand only when a Discord or Slack link exists. Keep 0-6 badges in total; zero is fine.
+   Pass a flag only with real data behind it: `--license` only with a LICENSE file (or the one Phase 6 will write), `--ci-workflow` only for a file that exists in `.github/workflows/`, and `--ecosystem` with `--package` only when the package is published (they add the Version and Downloads badges). With none of those it prints no badge, and its stderr comment names each missing input; that is a normal result, not an error.
+4. Add a Community badge by hand only when a Discord or Slack link exists.
+5. Add a static badge only when the Badges row of the type's priority table in `references/category-templates.md` names one (today only the Game template's engine badge does) or Special Detection adds one (the GitHub Pages badge), and only for a fact that doesn't change with the build: an engine, language, or platform. Add it whether or not steps 2-4 produced any badge. Build it as `![Unity 6000.0](https://img.shields.io/badge/Unity-6000.0-black?style=flat)`, with the value from Phase 1a. No template entry, no static badge.
 
-Never generate a static badge that imitates live status (`build-passing`, `maintained-yes`, `docs-available`). Static badges are only for facts that don't change with the build, such as language, framework, or platform. In detailed mode, keep at most one CI badge in the header and move per-workflow CI badges into a "Project status" table near the end.
+Keep 0-6 badges in total; zero is fine. Never generate a static badge that imitates live status (`build-passing`, `maintained-yes`, `docs-available`). In detailed mode, keep at most one CI badge in the header and move per-workflow CI badges into a "Project status" table near the end.
 
 ### 3d. Visual assets
 
 Use the images Phase 1j classified as usable. Reference them at the template's screenshot positions and read each one to write accurate alt text. For positions still uncovered:
-- **MUST position**: act on the Phase 2b Screenshots answer. Auto-capture: delegate to the screenshot sub-skill at `skills/screenshot/SKILL.md` (its Path A) with the output directory `/tmp/write-readme-draft/assets/screenshots/`, and reference each returned image in the draft by its project path (`assets/screenshots/hero.png`). I'll add later (the default): insert descriptive placeholders. Point to files: use the paths the user gave.
+- **MUST position**: act on the Phase 2b Screenshots answer. Auto-capture: delegate to the screenshot sub-skill at `skills/screenshot/SKILL.md` (its Path A) with the output directory `<draft-dir>/assets/screenshots/` (pass the literal path), and reference each returned image in the draft by its project path (`assets/screenshots/hero.png`). I'll add later (the default): insert descriptive placeholders. Point to files: use the paths the user gave.
 - **SHOULD/COULD position**: insert placeholders without asking.
 - **Minimal verbosity**: use found images only; no placeholders, no capture unless the user chose Auto-capture.
 
-Nothing is written into the project before Phase 6. Captures, `.tape` files, and rendered diagrams stay under `/tmp/write-readme-draft/`, which mirrors project paths: `/tmp/write-readme-draft/assets/screenshots/hero.png` is copied to `assets/screenshots/hero.png` on approval.
+Nothing is written into the project before Phase 6. Captures, `.tape` files, and rendered diagrams stay under `<draft-dir>`, which mirrors project paths: `<draft-dir>/assets/screenshots/hero.png` is copied to `assets/screenshots/hero.png` on approval.
 
 Rendering hygiene:
 - If the README is published to a registry (`readme = "README.md"` in pyproject.toml, setup.py reading README into `long_description`, or a package.json without `"private": true`), use absolute `https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}` image URLs. PyPI and npm don't resolve relative paths. Take `{branch}` from:
@@ -336,7 +437,7 @@ Rendering hygiene:
 
 Generate a TOC only if the README exceeds 150 lines. It is not a heading: a bold `**Contents**` line followed by a flat list of H2 links in GitHub anchor style, so the first H2 is still the run section. Insert it after the description and badges, before the first H2. Include H3s only if there are more than 10 H2s. Build it from the draft rather than by hand:
 ```bash
-python3 <skill-dir>/scripts/generate-toc.py /tmp/write-readme-draft/README.md
+python3 <skill-dir>/scripts/generate-toc.py <draft-dir>/README.md
 ```
 It prints the `**Contents**` block and adds H3s by itself past 10 H2s (`--no-h3` turns that off). Below 150 lines, a nav row near the top (`Docs • Demo • Install`) can stand in for it.
 
@@ -362,12 +463,13 @@ The Run-first rule in Phase 3b overrides those orderings: wherever the template 
 ## Phase 4: VERIFY
 
 ### Correctness
-- Project name matches manifest
+- The H1 title is the Phase 1h title, with its repo-name exception applied (or the user's Phase 2a question 5 answer). Package names in install commands, imports, and registry links match the manifest name exactly, even when it differs from the title (title `Climb Log`, `pip install climb_log`)
 - Version is current
-- License matches LICENSE file
+- License section matches the LICENSE file, or is the Phase 2b no-license line when there is no file
 - Install command uses correct package name and works
 - All file path references exist (Glob to verify), or are captures and ARCHITECTURE.md that Phase 6 will write
 - Code examples reference real exports (Grep to verify)
+- Config defaults follow the Configuration defaults rule in Phase 3b: the committed asset's value, labelled with its source
 - Badge URLs are syntactically valid
 
 ### Build command validation
@@ -380,20 +482,21 @@ The Run-first rule in Phase 3b overrides those orderings: wherever the template 
 | Rust | Has [[bin]] in Cargo.toml? | Use `cargo run` |
 | Flutter | Has .metadata with project_type: app? | Use `flutter run` not `dart run` |
 | Go | Has main package? | Use `go run .` |
+| Unity / Godot / Unreal | Does the scene or map named in the run steps exist, and does the editor version match `m_EditorVersion` / `config/features` / `EngineAssociation`? | Use the Phase 1a start scene and version |
 
 ### Anti-AI check (mandatory)
 1. Self-review every prose sentence against the 13 structural rules in the Anti-AI Writing Rules section below and the P0/P1 checklist in `references/anti-ai-rules.md`.
-2. Then run the scripts. Write the draft to `/tmp/write-readme-draft/README.md` (never the project root before approval) and run:
+2. Then run the scripts. Write the draft to `<draft-dir>/README.md` (never the project root before approval) and run:
    ```bash
-   python3 <skill-dir>/scripts/check-anti-ai.py --file /tmp/write-readme-draft/README.md --severity P1   # gate: P0+P1
-   python3 <skill-dir>/scripts/check-anti-ai.py --file /tmp/write-readme-draft/README.md --severity P2   # adds P2 warnings
-   python3 <skill-dir>/scripts/validate-readme.py /tmp/write-readme-draft/README.md --type <type_slug> --verbosity <level> --dir <project-root>
+   python3 <skill-dir>/scripts/check-anti-ai.py --file <draft-dir>/README.md --severity P1   # gate: P0+P1
+   python3 <skill-dir>/scripts/check-anti-ai.py --file <draft-dir>/README.md --severity P2   # adds P2 warnings
+   python3 <skill-dir>/scripts/validate-readme.py <draft-dir>/README.md --type <type_slug> --verbosity <level> --dir <project-root>
    ```
    The checker runs twice because its exit code counts everything at or above `--severity`: the P1 run's exit code is the gate, and the P2 run only lists warnings. Without `--severity` it reports P0 only.
-   `validate-readme.py` checks relative links and badge URLs, the first runnable step (past line 80 in standard and detailed, 50 in minimal; skipped for educational and dotfiles), dead in-page anchors, duplicate H2s, header badges (at most 6), dead badge hosts and static badges imitating live status, placeholders outside comments and code, positional image references ("screenshot above"), license text against the LICENSE file, `style=` attributes, and the Phase 3f length range. Its first output line always gives the first runnable step's line. Flags:
+   `validate-readme.py` checks relative links and badge URLs, the first runnable step (past line 80 in standard and detailed, 50 in minimal; skipped for educational and dotfiles; with `--type game`, a numbered list in the first H2 that opens a scene or project and presses Play also counts), dead in-page anchors, duplicate H2s, header badges (at most 6), dead badge hosts and static badges imitating live status, placeholders outside comments and code, positional image references ("screenshot above"), license text against the LICENSE file, `style=` attributes, and the Phase 3f length range. Its first output line always gives the first runnable step's line. Flags:
    - `--type` takes a canonical type slug and rejects anything else. `--verbosity` sets the run-first and length limits; add `--early-stage` when Phase 1g flagged an Early-stage project, for the 30-60 range.
-   - `--dir` must be the project root, not the `/tmp` draft directory: links and the LICENSE comparison resolve against it.
-   - `--expect PATH` (repeatable) names a file Phase 6 will create, so a link to it isn't reported broken. Pass `--expect ARCHITECTURE.md` when the companion file is being generated, and `--expect assets/screenshots/<file>` for each captured image the draft references.
+   - `--dir` must be the project root, not `<draft-dir>`: links and the LICENSE comparison resolve against it.
+   - `--expect PATH` (repeatable) names a file Phase 6 will create, so a link to it isn't reported broken. PATH is relative to the project root, never a `<draft-dir>` path. Pass `--expect ARCHITECTURE.md` when the companion file is being generated, `--expect LICENSE` when Phase 6 will write LICENSE (Phase 2b), and `--expect assets/screenshots/<file>` for each captured image the draft references (`<draft-dir>/assets/screenshots/hero.png` becomes `--expect assets/screenshots/hero.png`).
    - Length: over the maximum is an issue. Under the minimum prints a note and leaves the exit code alone; it needs no fix, because padding is worse (Phase 3f).
 3. Fix every P0 and P1 finding and re-run until the `--severity P1` check exits 0. The one exception is a finding on a documented rule exception: an emoji next to a brand or mascot name (rule 1), or a banned word inside a real name or identifier the README must quote (a package, product, or file name). Leave that text as it is and list it under "Warnings" in the Phase 5 summary with its reason; the gate is met when only such findings remain. P2 findings and `validate-readme.py` issues: fix, or list them under Warnings with a reason. If `python3` is unavailable, note that in Warnings and rely on step 1.
 
@@ -425,11 +528,12 @@ Sections: [list].
 Skipped: [list with reasons].
 Placeholders: [count and types].
 Captured: [paths to copy into the project, marking any that would overwrite a file] (only if Auto-capture ran).
+License file: LICENSE ([license], Copyright (c) [year] [holder]), a new file (only if Phase 6 will write it).
 Warnings: [any issues].
 Companion: ARCHITECTURE.md, [N] lines, [K] TODO markers (only if generated).
 ```
 
-If ARCHITECTURE.md was generated, present it in full after the README; one approval covers both files.
+If ARCHITECTURE.md was generated, present it in full after the README. A LICENSE that Phase 6 will write is listed in the summary, not shown in full, since its text is the standard license. One approval covers every file listed.
 
 Ask: "Want to change anything before I write this?"
 
@@ -437,13 +541,13 @@ The user can:
 - Approve ("looks good", "write it", "ship it") -- proceed to Phase 6
 - Request changes ("make the description shorter", "remove the tech stack table") -- apply, show updated, ask again
 - Request different verbosity ("make it minimal") -- regenerate, show, ask again
-- Abort ("cancel", "nevermind") -- nothing is written to the project; the `/tmp` draft and captures are left behind
+- Abort ("cancel", "nevermind") -- nothing is written to the project, neither README.md nor LICENSE; `<draft-dir>` and its captures are left behind, and the reply gives its path
 
 Loop until approved or aborted. After the first pass, apply only the specific requested change; do not re-present the full options block.
 
 ## Phase 6: WRITE
 
-Write README.md to the project root, and ARCHITECTURE.md beside it if it was generated. Copy each captured image the README references from `/tmp/write-readme-draft/assets/` to the same path under the project root, creating directories as needed; the Phase 5 approval covers any overwrite it listed. Confirm: "README.md written. [N] lines." (plus the ARCHITECTURE.md line count and the copied image paths).
+Write README.md to the project root, ARCHITECTURE.md beside it if it was generated, and LICENSE from `<draft-dir>/LICENSE` if Phase 2b called for one (never over an existing file). Copy each captured image the README references from `<draft-dir>/assets/` to the same path under the project root, creating directories as needed; the Phase 5 approval covers any overwrite it listed. Confirm: "README.md written. [N] lines." (plus the ARCHITECTURE.md line count, "LICENSE written ([license])." when one was, and the copied image paths).
 
 If an existing README was replaced, note that the old version can be recovered via git (if git is initialized).
 
@@ -500,7 +604,7 @@ When the safety exception applies, the MOVED line becomes, for example:
 ```
   RUN-FIRST: kept below Security model, safety context
 ```
-Then continue in the main flow: write the enhanced draft to `/tmp/write-readme-draft/README.md`, run Phase 4 on it, present it in Phase 5 with this change list alongside the structural summary, and write it in Phase 6. There is no separate write step.
+Then continue in the main flow: write the enhanced draft to `<draft-dir>/README.md`, run Phase 4 on it, present it in Phase 5 with this change list alongside the structural summary, and write it in Phase 6. There is no separate write step.
 
 ## Special Detection
 
@@ -510,7 +614,7 @@ What to do when a Phase 1g signal fires. The signals themselves live only in Pha
 Default Contributing to "Skip", skip community links, and frame the README as a portfolio piece. If the user overrides, generate a lightweight version: "This is a personal project. Fork it, or open an issue with questions."
 
 ### Academic / Coursework
-Default Contributing to "Skip" with an academic integrity note, add "Developed as part of [module] at [university]" if inferable, emphasize architecture and design decisions (after the run section), link to the documentation directory, and default license to "Skip."
+Default Contributing to "Skip" with an academic integrity note, add "Developed as part of [module] at [university]" if inferable, emphasize architecture and design decisions (after the run section), link to the documentation directory, and default License to Skip (the Phase 2b one-line section).
 Research write-up subtype: keep the detected type's template, but a Results section may precede the run section (Phase 3b). Take every number in it from a results file, notebook output, or the paper, and link the paper. Add Citation/BibTeX when a `CITATION.cff` or `.bib` entry exists. One runnable command that reproduces a result is still required; if the repo has none, insert `<!-- TODO: command that reproduces the results -->`.
 
 ### GitHub Pages / Static Site

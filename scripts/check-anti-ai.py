@@ -161,9 +161,10 @@ MAX_BOLD_LABEL_ITEMS = 2
 
 BULLET_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+(.*)$")
 # "**Name** -- desc", "**Name** — desc", "**Name** - desc", "**Name**: desc",
-# "**Name:** desc". A single hyphen needs spaces around it ("**x**-ish" is not a label).
+# "**Name:** desc", "**Name.** desc". A single hyphen needs spaces around it
+# ("**x**-ish" is not a label).
 BOLD_LABEL_RE = re.compile(
-    r"^\*\*([^*]+?)(?::\*\*|\*\*(?:\s*(?:--|\u2014|\u2013|:)|\s+-\s))\s*\S"
+    r"^\*\*([^*]+?)(?:[.:]\*\*|\*\*(?:\s*(?:--|\u2014|\u2013|:)|\s+-\s))\s*\S"
 )
 # Lists under these headings (and their subheadings) are reference lists, so
 # rule 12 does not apply. A heading that also says "feature" is not exempt.

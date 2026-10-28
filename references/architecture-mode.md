@@ -4,6 +4,8 @@ Write `ARCHITECTURE.md`, an opt-in companion to the README for contributors who 
 
 Section names in this file ("Phase 1: ANALYZE", "Run-first rule", "Anti-AI Writing Rules", and so on) refer to SKILL.md. Read the current text of each section when you use it.
 
+`<draft-dir>` is the run's draft directory, defined at the top of SKILL.md. In generate mode, use the one Phase 3 created. On a direct request, create it the same way (`mktemp -d /tmp/write-readme-draft.XXXXXX`) once, before Step 2, and reuse its literal path.
+
 ## When to run
 
 - Generate mode: only when the user chose "Also write ARCHITECTURE.md" in the Phase 2b optional choices block, which says when that line is shown. It is never shown when `ARCHITECTURE.md` or `docs/architecture.md` exists; the README links the existing file instead.
@@ -86,7 +88,7 @@ flowchart LR
 
 Rules:
 - Purpose line: what the file covers and who it is for, specific enough to fail the portability test if moved to another repo. Then "Verified against `<short-sha>`."
-- Diagram: one Mermaid `flowchart`, at most 12 nodes, edges only from Step 1.6. Put vendored and generated components in a `subgraph` or leave them out. Keep it as a fenced `mermaid` block; GitHub renders it. Run `python3 <skill-dir>/scripts/render-mermaid.py --input <file> --output /tmp/write-readme-draft/architecture.png` only to confirm the syntax renders or when a PNG is needed for another host.
+- Diagram: one Mermaid `flowchart`, at most 12 nodes, edges only from Step 1.6. Put vendored and generated components in a `subgraph` or leave them out. Keep it as a fenced `mermaid` block; GitHub renders it. Run `python3 <skill-dir>/scripts/render-mermaid.py --input <file> --output <draft-dir>/architecture.png` only to confirm the syntax renders or when a PNG is needed for another host.
 - Code map: a reference table. Paths in backticks and linked; roles in plain words.
 - Title the flow section "Startup flow" or "Request flow". Each step names a real function and says what it does in one clause.
 - Invariants: each states the rule, then where it is enforced or stated and what fails.
@@ -99,9 +101,9 @@ Rules:
 1. Glob every path in the code map and flow. Remove or fix any that don't exist.
 2. Grep every entry symbol and flow function (`def name`, `fn name`, `func name`, `function name`, `class name`, `export ... name`).
 3. Check every diagram edge against Step 1.6 and every invariant against its source file.
-4. Write the draft to `/tmp/write-readme-draft/ARCHITECTURE.md` and run:
+4. Write the draft to `<draft-dir>/ARCHITECTURE.md` and run:
    ```bash
-   python3 <skill-dir>/scripts/check-anti-ai.py --file /tmp/write-readme-draft/ARCHITECTURE.md --severity P1
+   python3 <skill-dir>/scripts/check-anti-ai.py --file <draft-dir>/ARCHITECTURE.md --severity P1
    ```
    Fix findings until it exits 0. Don't run `validate-readme.py` on it; its README checks don't apply.
 

@@ -86,6 +86,29 @@ class BoldLabelTests(unittest.TestCase):
         content = FEATURES + "- **main.go** -- entry point\n"
         self.assertEqual(bold_lines(content), [5, 6, 7])
 
+    def test_period_and_colon_inside_bold_flagged(self):
+        """The TinySim run's shape: "**Label.** text" on every item."""
+        content = ("# T\n\n## Features\n\n"
+                   "- **Evolving brains.** Each agent has a NEAT network that grows over generations.\n"
+                   "- **Heritable traits.** Size, speed and vision pass to offspring.\n"
+                   "- **Speciation.** Agents split into named species by genome distance.\n"
+                   "- **Predation:** agents can attack and eat each other.\n")
+        self.assertEqual(bold_lines(content), [5, 6, 7, 8])
+
+    def test_period_labels_exempt_in_reference_lists(self):
+        content = ("# T\n\n## Configuration\n\n- **Seed.** World seed.\n"
+                   "- **Size.** World size.\n- **Food.** Food limit.\n")
+        self.assertEqual(bold_lines(content), [])
+        paths = "# T\n\n- **train.py.** Trains.\n- **data/loader.** Batches.\n- **`cfg`.** Settings.\n"
+        self.assertEqual(bold_lines(paths), [])
+
+    def test_single_bold_lead_and_inline_keywords_pass(self):
+        content = ("# T\n\n- **Note.** Back up your saves first.\n- Pick a **seed** to repeat a run.\n"
+                   "- Press **Play** to start.\n- Use **Tab** for analytics.\n")
+        self.assertEqual(bold_lines(content), [])
+        two = "# T\n\n- **Fast.** Parses in 2s.\n- **Small.** 4 kB.\n- Typed: ships .d.ts.\n"
+        self.assertEqual(bold_lines(two), [])
+
     def test_old_ganba_feature_list_still_flagged(self):
         try:
             old = subprocess.run(

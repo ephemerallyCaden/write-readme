@@ -16,7 +16,7 @@ The write-readme skill detected no existing assets, the template requires visual
 - Detected project type (a slug from the canonical type slugs table in `../../SKILL.md`)
 - Screenshot positions still uncovered (parsed `<!-- screenshot: -->` placeholders)
 - Project root path
-- Output directory: `/tmp/write-readme-draft/assets/screenshots/`
+- Output directory: `<draft-dir>/assets/screenshots/`, where `<draft-dir>` is the literal per-run path write-readme created with `mktemp -d` (for example `/tmp/write-readme-draft.k3J9qL`). Use the path exactly as passed; never create another draft directory.
 
 This skill handles everything from that point: what to capture, how, which tools, fallbacks. Nothing is written into the project on this path, because the user hasn't approved the README yet: every capture, `.tape` file, and intermediate image goes in the output directory, and no README is edited. Return each image's path under the output directory, or the failure reason. write-readme puts the references in its draft and copies the images into the project in its Phase 6, after approval. For screenshots, write-readme never calls the capture scripts directly.
 
@@ -33,7 +33,7 @@ When invoked directly:
 5. Capture, validate, save to `assets/screenshots/` in the project (the user asked for files there)
 6. Update README.md image references (replace placeholders if they exist)
 
-`<out>` in the commands and code below is the output directory: `/tmp/write-readme-draft/assets/screenshots` on Path A, `assets/screenshots` on Path B.
+`<out>` in the commands and code below is the output directory: `<draft-dir>/assets/screenshots` (the literal path passed in) on Path A, `assets/screenshots` on Path B.
 
 ---
 
@@ -233,7 +233,7 @@ Reference script: `../../scripts/capture-web-app.py`
 from playwright.sync_api import sync_playwright
 import os
 
-OUT = "assets/screenshots"  # <out>; /tmp/write-readme-draft/assets/screenshots on Path A
+OUT = "assets/screenshots"  # <out>; <draft-dir>/assets/screenshots on Path A
 os.makedirs(OUT, exist_ok=True)
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
@@ -366,7 +366,7 @@ If both color schemes were captured, use the `<picture>` element with `<source m
 
 ### 5c. Validate captures
 
-Every captured image must pass before being used. Check: width >= 400px, pixel diversity > 10 unique colors (catches blank/error pages), file size between 1KB and 10MB. If validation fails, report the issue and do not include the image. A missing screenshot is better than a blank or broken one. Run `python3 ../../scripts/validate-screenshots.py <out>/*.png <out>/*.gif`.
+Every captured image must pass before being used. Check: width >= 400px, pixel diversity > 10 unique colors (catches blank/error pages), file size between 1KB and 10MB. If validation fails, report the issue and do not include the image. A missing screenshot is better than a blank or broken one. Run `find <out> -maxdepth 1 \( -name '*.png' -o -name '*.gif' \) -exec python3 ../../scripts/validate-screenshots.py {} +`; the quoted patterns keep zsh from aborting when there are no GIFs.
 
 ---
 
@@ -374,7 +374,7 @@ Every captured image must pass before being used. Check: width >= 400px, pixel d
 
 ### Replace placeholders with image references
 
-Path A: edit no README. Return the paths; write-readme places them in its draft using the rules below, with project paths (`assets/screenshots/hero.png`, not the `/tmp` path).
+Path A: edit no README. Return the paths; write-readme places them in its draft using the rules below, with project paths (`assets/screenshots/hero.png`, not the `<draft-dir>` path).
 
 Path B: parse `<!-- screenshot:{shot_id} | ... -->` placeholders in the README. For each placeholder with a matching captured image, replace with the appropriate markdown.
 

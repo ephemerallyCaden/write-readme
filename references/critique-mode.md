@@ -19,7 +19,7 @@ Project root is the nearest directory, starting at the README's own and walking 
 
 ## Hard rules
 
-- Nothing is written until the user picks fixes and approves the write. Never create files in the project during critique; the working copy lives at `/tmp/write-readme-critique/README.md`.
+- Nothing is written until the user picks fixes and approves the write. Never create files in the project during critique; the working copy lives in `<critique-dir>`, a directory of this run's own (Step 5).
 - Assessment A (judgment) never sees script output. Script results are evidence for the synthesis, not a starting point for the review.
 - Every finding carries a concrete fix: the exact old text and the exact new text, or an exact insert/delete/move. "Consider improving X" is not a fix.
 - A fix may only state facts found in the codebase. If the right text needs a fact the codebase lacks (expected output, a URL, a benchmark), the fix inserts a `<!-- TODO: ... -->` comment naming the missing fact. Never invent output, numbers, or links.
@@ -32,7 +32,7 @@ Project root is the nearest directory, starting at the README's own and walking 
 1. Read the README with line numbers.
 2. Run every step of Phase 1: ANALYZE against the project root. In 1f, classify each H2 as auto-generatable, human-authored, or mixed using Enhance Mode Step 2. Keep the table: heading, line range, class.
 3. Type: `--type` if given, else the Phase 1b result. Map it to a slug with the canonical type slugs table.
-4. Verbosity: the user's flag if given; else `minimal` when Phase 1g flags Early-stage or the README is under 80 lines with no Features section; else `standard`.
+4. Verbosity: the user's flag if given; else `minimal` when Phase 1g flags Early-stage, or when the README is under 80 lines with no Features section and Phase 1g's source-file or source-line signal is unmet; else `standard`.
 5. Read `references/anti-ai-rules.md` and the type's entry in `references/category-templates.md` (both relative to this skill's base directory).
 
 ## Step 2: Assess
@@ -54,9 +54,9 @@ Check every item. Verify claims against the codebase with Read, Glob, and Grep; 
 - Every relative link and image path exists (Glob).
 - Every in-page anchor `](#slug)` matches a heading slug (GitHub style: lowercase, spaces to hyphens, punctuation stripped, duplicate headings get `-1`, `-2`).
 - Code examples: every imported or called name exists in the source (Grep), per Code Example Generation step 4.
-- License text and license badge match the LICENSE file. "All rights reserved" next to an open-source LICENSE is a mismatch.
-- Runtime and version claims match the manifest (`engines`, `requires-python`, `rust-version`, SDK constraints).
-- Env vars and config keys the README names exist in code.
+- License text and license badge match the LICENSE file. "All rights reserved" next to an open-source LICENSE is a mismatch. With no LICENSE file, the License section must be the Phase 2b no-license section: naming a license that neither a file nor the manifest declares is P0, and a missing License section is the missing-MUST P1 under Structure. The fix for either is that one-line section.
+- Runtime and version claims match the manifest (`engines`, `requires-python`, `rust-version`, SDK constraints, the engine editor version from the Phase 1a engine project files).
+- Env vars and config keys the README names exist in code. Each stated default follows the Configuration defaults rule in Phase 3b: a default that differs from the committed config asset a fresh clone runs (a Unity `.asset`, a loaded config file) is P0, and the fix gives the asset's value with its source.
 - A feature bullet is a P0 false claim only after a Grep for its key terms finds nothing.
 - Limitation claims ("not supported on Windows", "Python 3.12 only") match the Phase 1k evidence. A claim the evidence contradicts (CI runs `windows-latest`, `requires-python` allows 3.13) is P0. A claim with no evidence either way goes in Unverified. An uncited limitation whose evidence exists is fine; adding the citation is P2.
 - Comparisons: every claim about another project names it and links a source, per the Comparison rule in Phase 3b. An unsourced claim about a named alternative is P1; the fix links a source found in `docs/` or the existing README, else adds `<!-- TODO: source for this claim -->`, or deletes the claim `[human]`. A comparison against unnamed "other tools" or "traditional approaches" is P1 (fix: name the alternative from a source, or cut). A comparison with no dimension where this project loses or doesn't apply is P2.
@@ -64,7 +64,7 @@ Check every item. Verify claims against the codebase with Read, Glob, and Grep; 
 
 **Getting started**
 - The Run-first rule in Phase 3b holds, including its stated exceptions.
-- Time to first command: note the line of the first runnable command (fenced shell block, download table, or store badge). Past line 80 (line 50 for minimal) is P1.
+- Time to first command: note the line of the first runnable command (fenced shell block, download table, or store badge; for a Unity, Godot, or Unreal project, the numbered editor steps from the Run-first rule). Past line 80 (line 50 for minimal) is P1.
 - Prerequisites name the runtime versions the manifest requires.
 - An expected-result line follows the run command: the URL and port for servers (from config or defaults), `--help` / `--version` for CLIs, the generated files for generators. Missing is P2; the fix uses only codebase facts.
 - Post-install steps the code requires (env vars read at startup, migrations, a config file that must exist) are documented. Missing is P1.
@@ -178,14 +178,14 @@ With no P0 or P1 findings, make "All findings" the recommended option. With no f
 ## Step 5: Apply
 
 - None / report only: stop. Write nothing, and create no working copy.
-- Otherwise copy the README to `/tmp/write-readme-critique/README.md` (and ARCHITECTURE.md to `/tmp/write-readme-critique/ARCHITECTURE.md` when a chosen fix targets it) and apply the chosen fixes there, from the highest line number to the lowest so earlier line numbers stay valid. Apply each fix as an exact replacement of its quoted old text. If the old text no longer matches (two fixes overlap), skip that fix and report it as skipped.
+- Otherwise create `<critique-dir>` once with `mktemp -d /tmp/write-readme-critique.XXXXXX`, so parallel critiques never share a working copy. Note the path it prints and write that literal path wherever `<critique-dir>` appears for the rest of the session, including when the user adjusts a fix; shell variables don't carry over between commands. Copy the README to `<critique-dir>/README.md` (and ARCHITECTURE.md to `<critique-dir>/ARCHITECTURE.md` when a chosen fix targets it) and apply the chosen fixes there, from the highest line number to the lowest so earlier line numbers stay valid. Apply each fix as an exact replacement of its quoted old text. If the old text no longer matches (two fixes overlap), skip that fix and report it as skipped.
 - Change nothing outside the chosen fixes, with one exception: when a fix changes headings, regenerate an existing TOC and report it as "follow-on: TOC updated".
-- Re-run both Assessment B commands on the working copy. Keep `--dir <project-root>` so relative links resolve against the project, not `/tmp`.
+- Re-run both Assessment B commands on the working copy. Keep `--dir <project-root>` so relative links resolve against the project, not `<critique-dir>`.
 - If a fix introduced a new checker-P0 or checker-P1 finding, correct the fix's own text and re-run. Never touch other text to clear it.
 
 Then show, in this order:
 1. Applied and skipped ids, with the reason for each skip.
-2. `diff -u <readme> /tmp/write-readme-critique/README.md`, the full unified diff, and the same for ARCHITECTURE.md when a fix touched it.
+2. `diff -u <readme> <critique-dir>/README.md`, the full unified diff, and the same for ARCHITECTURE.md when a fix touched it.
 3. A before/after table: checker-P0/P1/P2 counts and the validate-readme issue count.
 4. The question "Write these changes to `<path>`?". Skip it if the user already approved writing in their selection (for example "apply all and write it").
 
