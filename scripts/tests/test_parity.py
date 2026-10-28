@@ -1,0 +1,197 @@
+"""Docs-vs-scripts parity: SKILL.md tables, data/type-slugs.json,
+detect-project-type.sh, and the "(scripted)" claims vs check-anti-ai.py.
+
+Run: python3 -m unittest discover -s scripts/tests -v
+"""
+from __future__ import annotations
+
+import json
+import os
+import re
+import unittest
+
+from _load import REPO, load_script, script_path
+
+ca = load_script("check-anti-ai.py")
+vr = load_script("validate-readme.py")
+
+SKILL_MD = os.path.join(REPO, "SKILL.md")
+TYPE_SLUGS = os.path.join(REPO, "data", "type-slugs.json")
+DETECT = script_path("detect-project-type.sh")
+# Files whose checklist bullets may carry "(scripted)"
+SCRIPTED_DOCS = [SKILL_MD, os.path.join(REPO, "references", "anti-ai-rules.md")]
+
+
+def read(path: str) -> str:
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+def load_slugs() -> dict[str, dict]:
+    with open(TYPE_SLUGS, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def markdown_table(text: str, heading: str) -> list[list[str]]:
+    """Body rows of the first table under `heading` (header and separator dropped)."""
+    lines = text.splitlines()
+    start = next(i for i, ln in enumerate(lines) if ln.strip() == heading)
+    rows: list[list[str]] = []
+    for ln in lines[start + 1:]:
+        if ln.startswith("#"):
+            break
+        if ln.strip().startswith("|"):
+            rows.append([c.strip() for c in ln.strip().strip("|").split("|")])
+        elif rows:
+            break
+    return [r for r in rows[2:]]
+
+
+def split_names(label: str, names: dict[str, str]) -> list[str] | None:
+    """Slugs for a row label that is one type name or several joined by " / "
+    ("CLI Tool / TUI Application"). None if the label is not such a join."""
+    if label in names:
+        return [names[label]]
+    for name, slug in names.items():
+        if label.startswith(name + " / "):
+            rest = split_names(label[len(name) + 3:], names)
+            if rest is not None:
+                return [slug, *rest]
+    return None
+
+
+def parse_range(value: str) -> list[int | None]:
+    m = re.fullmatch(r"(\d+)\s*(?:-\s*(\d+)|\+)", value)
+    if not m:
+        raise ValueError(f"unparseable range {value!r}")
+    return [int(m.group(1)), int(m.group(2)) if m.group(2) else None]
+
+
+class LengthTargetParityTests(unittest.TestCase):
+    """SKILL.md "## Length Targets" == data/type-slugs.json == validate-readme.py."""
+
+    def table_problems(self) -> tuple[list[str], list[str]]:
+        """(value mismatches, label/coverage problems) between the table and the JSON."""
+        slugs = load_slugs()
+        names = {entry["name"]: slug for slug, entry in slugs.items()}
+        covered: dict[str, str] = {}
+        values: list[str] = []
+        labels: list[str] = []
+        for label, value in (row[:2] for row in markdown_table(read(SKILL_MD), "## Length Targets")):
+            row_slugs = split_names(label, names)
+            if row_slugs is None:
+                # Fall back to the first " / " part so values are still compared.
+                head = label.split(" / ")[0]
+                row_slugs = [s for n, s in names.items() if n.split(" / ")[0] == head]
+                labels.append(f"row {label!r} matches no type-slugs.json name")
+            for slug in row_slugs:
+                if slug in covered:
+                    labels.append(f"{slug} is in rows {covered[slug]!r} and {label!r}")
+                covered[slug] = label
+                if parse_range(value) != slugs[slug]["target_lines"]:
+                    values.append(f"{label!r} says {value}; type-slugs.json {slug} has "
+                                  f"{slugs[slug]['target_lines']}")
+        for slug in sorted(set(slugs) - set(covered)):
+            labels.append(f"{slug} ({slugs[slug]['name']!r}) has no row")
+        return values, labels
+
+    def test_skill_table_values_match_type_slugs(self):
+        self.assertEqual(self.table_problems()[0], [])
+
+    # Known drift at the time of writing: "CLI Tool / TUI" and "Other" are not
+    # type-slugs.json names, and Generative AI has no row. The SKILL.md edit
+    # that fixes the labels turns this into an unexpected success, which
+    # fails the run: delete the decorator then.
+    @unittest.expectedFailure
+    def test_skill_table_rows_name_every_slug_once(self):
+        self.assertEqual(self.table_problems()[1], [])
+
+    def test_validator_uses_type_slugs(self):
+        slugs = load_slugs()
+        self.assertEqual(vr.LENGTH_TARGETS, {s: tuple(e["target_lines"]) for s, e in slugs.items()})
+
+
+class SlugSetParityTests(unittest.TestCase):
+    def test_detect_outputs_match_type_slugs(self):
+        outputs = set(re.findall(r'echo "([a-z-]+)"', read(DETECT)))
+        self.assertEqual(outputs, set(load_slugs()))
+
+    def test_detect_usage_lists_every_slug(self):
+        usage = read(DETECT).split("to stdout:", 1)[1].split("USAGE", 1)[0]
+        listed = set(re.findall(r"[a-z][a-z-]*", usage))
+        self.assertEqual(listed, set(load_slugs()))
+
+    def test_skill_slug_table_matches_type_slugs(self):
+        rows = markdown_table(read(SKILL_MD), "### Canonical type slugs")
+        self.assertEqual({slug: name for name, slug in rows},
+                         {slug: e["name"] for slug, e in load_slugs().items()})
+
+
+# Each "(scripted)" bullet in SCRIPTED_DOCS must match at least one key
+# phrase (case-insensitive regex). Each key maps to checker rules and a
+# sample that must trigger every one of them.
+SCRIPTED_RULES: list[tuple[str, list[tuple[str, str]]]] = [
+    (r"banned (?:list|word)|tier 1[ab]", [("banned-word", "We leverage caches.")]),
+    (r"chatbot artifact", [("chatbot-artifact", "Feel free to open an issue.")]),
+    (r"template phrase", [("template-phrase", "It is a bold step towards better tools.")]),
+    (r"let['’]s", [("lets-opener", "- Let’s get started.")]),
+    (r"emoji", [("emoji-in-heading", "## ⭐ Features")]),
+    (r"bold-label|rule 12", [
+        ("bold-label-list", "- **Fast** - parses quickly\n- **Small** - 4 kB\n- **Typed** - ships types"),
+        ("em-dash-in-list", "- Fast — parses quickly"),
+    ]),
+    (r"preamble", [("section-preamble", "This section covers setup.")]),
+    (r"transition word", [("transition-fluff", "Moreover, it works.")]),
+    (r"em dashes", [("em-dash-overuse", "A — b — c — d.")]),
+]
+SCRIPTED_BULLET_RE = re.compile(r"^\s*[-*]\s+(?:\[[ x]\]\s+)?(.*\(scripted\b.*)$", re.IGNORECASE)
+
+
+def scripted_bullets() -> list[tuple[str, int, str]]:
+    out: list[tuple[str, int, str]] = []
+    for path in SCRIPTED_DOCS:
+        for lineno, line in enumerate(read(path).splitlines(), start=1):
+            m = SCRIPTED_BULLET_RE.match(line)
+            if m:
+                out.append((os.path.relpath(path, REPO), lineno, m.group(1)))
+    return out
+
+
+class ScriptedClaimTests(unittest.TestCase):
+    def test_scripted_bullets_exist(self):
+        self.assertGreaterEqual(len(scripted_bullets()), 9)
+
+    def test_every_scripted_bullet_maps_to_a_rule(self):
+        unmapped = [f"{path}:{lineno}: {text}" for path, lineno, text in scripted_bullets()
+                    if not any(re.search(key, text, re.IGNORECASE) for key, _ in SCRIPTED_RULES)]
+        self.assertEqual(unmapped, [], "add a SCRIPTED_RULES entry (and a checker rule) for these")
+
+    def test_every_mapped_rule_fires(self):
+        for key, rules in SCRIPTED_RULES:
+            for rule, sample in rules:
+                with self.subTest(key=key, rule=rule):
+                    fired = {f["rule"] for f in ca.check_content(f"# T\n\n{sample}\n")}
+                    self.assertIn(rule, fired)
+
+    def test_quoted_examples_are_caught(self):
+        """Quoted examples in phrase bullets ("Feel free to...", "serves as a") are flagged."""
+        fill = {"[adjective]": "bold", "[noun]": "tools"}
+        for path, lineno, text in scripted_bullets():
+            rules = [rule for key, pairs in SCRIPTED_RULES if re.search(key, text, re.IGNORECASE)
+                     for rule, _ in pairs if rule in ("chatbot-artifact", "template-phrase")]
+            for example in re.findall(r'"([^"]+)"', text) if rules else []:
+                for token, word in fill.items():
+                    example = example.replace(token, word)
+                with self.subTest(at=f"{path}:{lineno}", example=example):
+                    fired = {f["rule"] for f in ca.check_content(f"# T\n\n{example.rstrip('.')} x.\n")}
+                    self.assertTrue(fired & set(rules), fired)
+
+    def test_every_key_is_used(self):
+        texts = [text for _, _, text in scripted_bullets()]
+        unused = [key for key, _ in SCRIPTED_RULES
+                  if not any(re.search(key, t, re.IGNORECASE) for t in texts)]
+        self.assertEqual(unused, [])
+
+
+if __name__ == "__main__":
+    unittest.main()
