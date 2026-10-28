@@ -3,7 +3,9 @@
   Generated 2026-10-28 by the write-readme skill (/readme) in Claude Code,
   run on a clone of github.com/ephemerallyCaden/TinySim at 84586bb:
   7cafb75 plus one local commit that adds media/ (the three files in
-  ./media) and removes the original 2-line README.
+  ./media) and removes the original 2-line README. The two PNGs here are
+  downscaled from 3456 to 1728 px wide; nothing else changed. The GIF is
+  the original file.
 
   Everything below this comment is the unedited output. Line numbers
   quoted in assets/readme-before-after.png count from the line after it.
