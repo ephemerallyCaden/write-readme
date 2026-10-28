@@ -1,4 +1,4 @@
-"""Fixtures for scripts/check-anti-ai.py rule-12 scoping and CLI help.
+"""Fixtures for scripts/check-anti-ai.py: line rules, rule-12 scoping and CLI help.
 
 Run: python3 -m unittest discover -s scripts/tests -v
 """
@@ -12,6 +12,11 @@ from _load import REPO, load_script, script_path
 
 SCRIPT = script_path("check-anti-ai.py")
 ca = load_script("check-anti-ai.py")
+
+
+def findings(content: str, rule: str | None = None) -> list[tuple[str, str]]:
+    return [(f["rule"], f["text"]) for f in ca.check_content(content)
+            if rule is None or f["rule"] == rule]
 
 
 def bold_lines(content: str) -> list[int]:
@@ -69,6 +74,14 @@ class BoldLabelTests(unittest.TestCase):
     def test_tilde_fence_is_code(self):
         self.assertEqual(ca.check_content("# T\n\n~~~\nwe leverage it\n~~~\n"), [])
 
+    def test_single_hyphen_labels_flagged(self):
+        content = "# T\n\n- **Fast** - parses in 2s\n- **Small** - 4 kB\n- **Typed** - ships .d.ts\n"
+        self.assertEqual(bold_lines(content), [3, 4, 5])
+
+    def test_hyphenated_bold_word_is_not_a_label(self):
+        content = "# T\n\n- **Fast**-ish parsing\n- **Small**-ish output\n- **Typed**-ish API\n"
+        self.assertEqual(bold_lines(content), [])
+
     def test_mixed_list_counts_plain_labels_only(self):
         content = FEATURES + "- **main.go** -- entry point\n"
         self.assertEqual(bold_lines(content), [5, 6, 7])
@@ -88,6 +101,89 @@ class CommentTests(unittest.TestCase):
     def test_comment_opener_in_inline_code_keeps_scanning(self):
         content = "# T\n\nEscapes `<!--` in output.\n\nWe leverage it.\n"
         self.assertIn("banned-word", [f["rule"] for f in ca.check_content(content)])
+
+
+class ProseOnlyTests(unittest.TestCase):
+    """check_content scans rendered prose: inline code and HTML comments are skipped."""
+
+    def test_inline_code_identifier_ignored(self):
+        self.assertEqual(findings("# T\n\nInstall with `npm i comprehensive-lib`.\n"), [])
+
+    def test_html_comment_ignored(self):
+        content = ("# T\n\n<!-- screenshot:dash | description=Showcase the robust dashboard -->\n"
+                   "<!--\nLet's leverage this\n-->\n")
+        self.assertEqual(findings(content), [])
+
+    def test_prose_next_to_code_still_flagged(self):
+        content = "# T\n\nRun `npm i comprehensive-lib` for a robust setup. <!-- seamless -->\n"
+        self.assertEqual(findings(content), [("banned-word", "robust")])
+
+    def test_context_is_the_raw_line(self):
+        f = ca.check_content("# T\n\nA robust `x` tool.\n")[0]
+        self.assertEqual(f["context"], "A robust `x` tool.")
+
+
+class BannedWordInflectionTests(unittest.TestCase):
+    def test_review_sentence(self):
+        content = ("# T\n\nIt leverages caches, Empowers teams, Streamlined setup, Showcases output, "
+                   "Utilizes threads and syncs Seamlessly.\n")
+        self.assertEqual(sorted(t for _, t in findings(content, "banned-word")),
+                         ["empowers", "leverages", "seamlessly", "showcases", "streamlined", "utilizes"])
+
+    def test_more_inflections(self):
+        for text in ["delved", "delving", "harnessing", "harnesses", "elevating", "embarked",
+                     "tapestries", "fostering", "realms", "paradigms", "utilising", "utilization",
+                     "holistically", "robustness", "comprehensively", "unpacked", "facilitates",
+                     "empowerment", "pivotally", "meticulously", "beacons"]:
+            with self.subTest(text=text):
+                self.assertEqual(len(findings(f"# T\n\nWe saw {text} here.\n", "banned-word")), 1)
+
+    def test_unrelated_words_not_matched(self):
+        for text in ["elevator", "elevation", "realmente", "unpacker", "fosterage",
+                     "showcasement", "robusta", "delver", "levers"]:
+            with self.subTest(text=text):
+                self.assertEqual(findings(f"# T\n\nWe saw {text} here.\n", "banned-word"), [])
+
+    def test_multi_word_entries_exact(self):
+        self.assertEqual(findings("# T\n\nA deep dive into best practices.\n", "banned-word"),
+                         [("banned-word", "deep dive"), ("banned-word", "best practices")])
+        self.assertEqual(findings("# T\n\nDeep dives and best practice notes.\n", "banned-word"), [])
+
+
+class PhraseTests(unittest.TestCase):
+    def test_template_phrases(self):
+        for text, hit in [("This is a bold step towards better tools.", "step towards"),
+                          ("A first step toward sanity.", "step toward"),
+                          ("It serves as the base layer.", "serves as the"),
+                          ("It serves as an adapter.", "serves as an"),
+                          ("It serves as a cache.", "serves as a")]:
+            with self.subTest(text=text):
+                self.assertEqual(findings(f"# T\n\n{text}\n", "template-phrase"),
+                                 [("template-phrase", hit)])
+
+    def test_serves_without_article_passes(self):
+        self.assertEqual(findings("# T\n\nIt serves assets as static files.\n"), [])
+
+    def test_lets_openers(self):
+        for text, hit in [("Let's get started.", "Let's get"),
+                          ("Let\u2019s get started.", "Let\u2019s get"),
+                          ("- Let's begin", "Let's begin"),
+                          ("1. Let's begin", "Let's begin"),
+                          ("## Let's build", "Let's build"),
+                          ("> Let's go", "Let's go")]:
+            with self.subTest(text=text):
+                self.assertEqual(findings(f"# T\n\n{text}\n", "lets-opener"), [("lets-opener", hit)])
+
+    def test_lets_without_apostrophe_passes(self):
+        self.assertEqual(findings("# T\n\n- Lets you stream logs.\n"), [])
+
+    def test_emoji_in_heading(self):
+        for heading in ["## \u2b50 Features", "## \U0001f680 Quick start", "## \u2705 Done",
+                        "## \u23f1 Benchmarks", "## \U0001f195 New"]:
+            with self.subTest(heading=heading):
+                self.assertEqual(len(findings(f"# T\n\n{heading}\n", "emoji-in-heading")), 1)
+        self.assertEqual(findings("# T\n\n## Migrating 1.x \u2192 2.x\n"), [])
+        self.assertEqual(findings("# T\n\n## The `\u2b50` flag\n"), [])
 
 
 class CliTests(unittest.TestCase):
