@@ -313,7 +313,10 @@ Use the images Phase 1j classified as usable. Reference them at the template's s
 - **Minimal verbosity**: use found images only; no placeholders, no capture unless the user chose Auto-capture.
 
 Rendering hygiene:
-- If the README is published to a registry (`readme = "README.md"` in pyproject.toml, setup.py reading README into `long_description`, or a package.json without `"private": true`), use absolute `https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}` image URLs. PyPI and npm don't resolve relative paths. Take `{branch}` from `git symbolic-ref --short refs/remotes/origin/HEAD`.
+- If the README is published to a registry (`readme = "README.md"` in pyproject.toml, setup.py reading README into `long_description`, or a package.json without `"private": true`), use absolute `https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}` image URLs. PyPI and npm don't resolve relative paths. Take `{branch}` from:
+  ```bash
+  b=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null); b=${b#origin/}; [ -n "$b" ] || b=$(git branch --show-current); echo "$b"
+  ```
 - If the logo or hero comes as a dark/light pair (`logo-dark.png` / `logo-light.png`), emit `<picture>` with `<source media="(prefers-color-scheme: dark)" srcset="...">` and the light image as the `<img>` fallback.
 - No `style=` attributes in HTML; GitHub strips them. Use `width` and `align`.
 
