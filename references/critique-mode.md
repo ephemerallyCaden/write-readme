@@ -116,7 +116,7 @@ Keep the raw output and exit codes. These are the "before" results. If `python3`
 ## Step 3: Synthesize
 
 1. Turn each script finding into a finding, or merge it into the matching A finding and add "(also flagged by `<script>`)" to its evidence.
-2. Dismiss script false positives (for example a bold-label hit on a file list) in the Not actioned list, with the reason.
+2. Dismiss script false positives (for example a bold-label hit on a list of named components under a heading the checker doesn't treat as a reference section) in the Not actioned list, with the reason.
 3. Assign severity:
 
 | Severity | Meaning | Examples |

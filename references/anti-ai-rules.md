@@ -84,7 +84,7 @@ Same list, same numbering as SKILL.md.
 
 11. **Every prose sentence passes the portability test.** See the next section.
 
-12. **Feature lists: no bold labels, no em dashes.** Write plain bullets that start with the feature name followed by a colon, or flow straight into the description. Do not repeat `**Name** -- description` on every line. This covers lists of features, capabilities, and benefits, where a bold label on every line reads as filler ("**Fast**. Everything is fast"). Reference lists are different: files, directories, config keys, options, flags, and languages may lead with the name in backticks or bold (`` `train.py` -- trains the model ``), because the name is what the reader scans for.
+12. **Feature lists: no bold labels, no em dashes.** Write plain bullets that start with the feature name followed by a colon, or flow straight into the description. Do not repeat `**Name** -- description` on every line. This covers lists of features, capabilities, and benefits, where a bold label on every line reads as filler ("**Fast**. Everything is fast"). Reference lists are different. They may lead with the name in backticks or bold (`` `train.py` -- trains the model ``), because the name is what the reader scans for. A list is a reference list when an item's label is inline code or a file/path token (`` `--verbose` ``, `train.py`, `src/app`), or when the list sits under a heading that contains structure, file(s), layout, config, configuration, option(s), flag(s), api, reference, language(s), or environment, including that heading's subheadings. A heading that also says "feature" ("Configuration features") is still checked. The checker flags a list once 3 or more of its items carry a bold label that is not exempt. Em dashes are flagged in every list item, reference lists included; use `--` or a colon.
 
 13. **Earned emphasis only.** Bold a keyword only when it helps scanning: at most one inline bold per bullet, and never at the start of a feature bullet (rule 12). "Select a set of **filters** to narrow the capture" is fine. Do not bold for drama. Never bold entire sentences.
 
@@ -128,7 +128,7 @@ READMEs operate in a `docs` register, not `blog` or `linkedin`. This relaxes som
 
 **Use with care (docs profile relaxes these):**
 - Em dashes: 0-2 per README max. Never use em dashes in feature lists. Use a colon or just start the sentence after the feature name.
-- Bold keywords in feature lists: do NOT bold the feature name. Plain text bullets read more naturally. If a feature list has 5+ items, every line being bold creates a wall of emphasis that scans as AI-generated. Reference lists (files, config keys, options) may lead with the name in backticks or bold (rule 12).
+- Bold keywords in feature lists: do NOT bold the feature name. Plain text bullets read more naturally. If a feature list has 5+ items, every line being bold creates a wall of emphasis that scans as AI-generated. Reference lists (code or path labels, or lists under a structure, files, config, options, API, or similar heading) may lead with the name in backticks or bold (rule 12).
 - Hedging with "may" (acceptable for genuine technical uncertainty)
 
 **Always strict (docs profile keeps these):**

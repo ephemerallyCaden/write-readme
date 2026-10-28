@@ -423,6 +423,7 @@ Title, Badges, Description, Features, Install, Quick Start, Docs, Contributing, 
    python3 <skill-dir>/scripts/validate-readme.py /tmp/write-readme-draft/README.md --type <type_slug> --verbosity <level> --dir <project-root>
    ```
    `--severity` is required: without it the checker reports P0 only.
+   `validate-readme.py` checks relative links and badge URLs, the first runnable step (past line 80 in standard and detailed, 50 in minimal; skipped for educational and dotfiles), dead in-page anchors, duplicate H2s, header badges (at most 6), dead badge hosts and static badges imitating live status, placeholders outside comments and code, positional image references ("screenshot above"), license text against the LICENSE file, `style=` attributes, and the Phase 3f length range. Its first output line always gives the first runnable step's line. `--verbosity` sets the run-first and length limits. `--dir` must be the project root, not the `/tmp` draft directory: links and the LICENSE comparison resolve against it.
 3. Fix every P0 and P1 finding and re-run until the `--severity P1` check exits 0. P2 findings and `validate-readme.py` issues: fix, or list them under "Warnings" in the Phase 5 summary with a reason. If `python3` is unavailable, note that in Warnings and rely on step 1.
 
 ### Completeness
@@ -514,7 +515,7 @@ delve, robust, comprehensive, leverage, seamless, cutting-edge, empower, streaml
 9. No "In today's world of..." -- ever. No temporal scene-setting.
 10. End on concrete points, not summaries. No "Overall, this tool provides..." endings.
 11. Every prose sentence must pass the portability test (see below).
-12. Feature lists: no bold labels, no em dashes. Write plain bullets that start with the feature name followed by a colon or just flow into the description naturally. Do not repeat the same `**Name** -- description` pattern on every line. This applies to lists of features, capabilities, and benefits. Reference lists (files, directories, config keys, options, flags, languages) may lead with the name in backticks or bold, because the name is what the reader scans for.
+12. Feature lists: no bold labels, no em dashes. Write plain bullets that start with the feature name followed by a colon or just flow into the description naturally. Do not repeat the same `**Name** -- description` pattern on every line. This applies to lists of features, capabilities, and benefits. Reference lists may lead with the name in backticks or bold, because the name is what the reader scans for. A list is a reference list when an item's label is inline code or a file/path token (`` `--verbose` ``, `train.py`, `src/app`), or when the list sits under a heading that contains structure, file(s), layout, config, configuration, option(s), flag(s), api, reference, language(s), or environment, including that heading's subheadings. A heading that also says "feature" ("Configuration features") is still checked. The checker flags a list once 3 or more of its items carry a bold label that is not exempt. Em dashes are flagged in every list item, reference lists included; use `--` or a colon.
 13. Earned emphasis only. Bold a keyword only when it helps scanning: at most one inline bold per bullet, never at the start of a feature bullet (rule 12). Never bold for drama, and never bold whole sentences.
 
 ### Voice register
