@@ -1,6 +1,6 @@
 ---
 name: readme
-description: Generate polished, project-type-aware READMEs from codebase analysis. Use when asked to "generate a readme", "write a readme", "create a readme", or "/readme". Supports minimal/standard/detailed verbosity, 18 project types, anti-AI-slop writing rules, and optional screenshot capture. Also critiques existing READMEs ("/readme critique", "review/audit/improve my readme") with ranked findings and fixes it applies on request.
+description: Generate polished, project-type-aware READMEs from codebase analysis. Use when asked to "generate a readme", "write a readme", "create a readme", or "/readme". Supports minimal/standard/detailed verbosity, 20 project types, anti-AI-slop writing rules, and optional screenshot capture. Also critiques existing READMEs ("/readme critique", "review/audit/improve my readme") with ranked findings and fixes it applies on request.
 ---
 
 # write-readme
@@ -18,6 +18,7 @@ Options (natural language or flags):
 - `/readme minimal` or "write a short readme" -- essentials only
 - `/readme detailed` or "write a polished readme" -- all sections, comprehensive
 - `/readme --type cli` -- override auto-detected project type
+- `/readme architecture` or "write an ARCHITECTURE.md" -- write only the ARCHITECTURE.md companion file. Follow `references/architecture-mode.md`.
 - `/readme critique [path]` or "critique/review/audit/improve my readme" -- audit an existing README (default `./README.md`) against these same rules and scripts. Reports P0-P2 findings with exact fixes, then applies the ones you pick. Follow `references/critique-mode.md` (relative to this skill's base directory). If no README exists, offer generate mode.
 - Generate mode stays the default. "Enhance" rewrites auto sections in bulk; "critique" only proposes edits and you choose which to apply.
 
@@ -28,40 +29,42 @@ Run all steps silently. No user interaction.
 ### 1a. Detect manifests
 
 ```
-Glob: package.json, pyproject.toml, setup.py, setup.cfg, Cargo.toml, go.mod, Gemfile, *.gemspec, pom.xml, build.gradle, build.gradle.kts, CMakeLists.txt, Makefile, mix.exs, pubspec.yaml, composer.json, Package.swift, *.cabal, dune-project
+Glob: package.json, pyproject.toml, setup.py, setup.cfg, Cargo.toml, go.mod, Gemfile, *.gemspec, pom.xml, build.gradle, build.gradle.kts, CMakeLists.txt, Makefile, mix.exs, pubspec.yaml, composer.json, Package.swift, *.cabal, dune-project, platformio.ini
 ```
 
 Read each found manifest. Extract: name, version, description, license, dependencies, scripts, entry points, engine/runtime requirements.
 
 ### 1b. Detect project type
 
-Use the unified taxonomy below. First match wins (lowest priority number).
+Use the unified taxonomy below. First match wins (lowest priority number). Personal config and Hardware come first because their file signals are unambiguous, while the helper scripts those repos carry (an `argparse` installer, a matplotlib plot of sensor logs) would otherwise match CLI or Visual Output. A hardware repo that also holds a companion app is ambiguous: Phase 2a question 3.
 
 | Pri | Type | Detection Signals |
 |-----|------|-------------------|
-| 1 | Game / Interactive | `project.godot`, pygame/arcade/raylib/bevy/love2d imports, Phaser/PixiJS/Babylon imports, game asset dirs (sprites/, levels/, textures/) |
-| 2 | Visual Output / CV | cv2/mediapipe/dlib imports + VideoCapture/imwrite/landmark/bounding.box. Also: matplotlib/plotly/d3/chart.js/bokeh/seaborn with data pipeline (Data Viz subtype) |
-| 3 | Generative AI | diffusers/StableDiffusion/comfyui imports. Uses Visual Output template. |
-| 4 | Bot | discord.py/discord.js/telegram/slack-bolt/botfather imports, bot token patterns |
-| 5 | Browser Extension | manifest.json with permissions/content_scripts/background |
-| 6 | Mobile App | pubspec.yaml (Flutter), react-native dep, android/+ios/ dirs, .xcodeproj |
-| 7 | Desktop Application | Electron/Tauri/Qt/GTK/SwiftUI/WPF imports, .desktop files |
-| 8 | TUI Application | textual/blessed/tview/bubbletea/cursive/crossterm/ncurses imports. Uses CLI Tool template. |
-| 9 | Documentation Site / SSG | docusaurus.config/vitepress/mkdocs.yml/astro.config/sphinx conf.py |
-| 10 | Web Application | Server framework (express/fastapi/flask/django/next/nuxt/svelte/rails) + dev/start/serve script + frontend files (pages/, components/, src/pages/, src/components/, templates/, public/, or index.html) |
-| 11 | API / Backend Service | Server framework + NO frontend files. Everything that missed priority 10 for lack of frontend files lands here. |
-| 12 | CLI Tool | bin in manifest, argparse/click/typer/clap/cobra imports, console_scripts entry point |
-| 13 | Framework | Plugin system, middleware patterns, scaffolding CLI, create-* package |
-| 14 | ML/AI Model | torch/tensorflow/jax imports + model dirs + training scripts (WITHOUT visual output signals) |
-| 15 | DevOps / Infrastructure | Kubernetes manifests, Terraform files, Ansible playbooks, Helm charts |
-| 16 | Educational / Awesome | awesome- prefix, curated link lists, no source code |
-| 17 | Library / Package | exports/lib field, public API, no bin, no server framework |
-| 18 | Other / Unknown | Nothing above matched -- infer from codebase |
+| 1 | Personal config / dotfiles | Repo name contains `dotfiles` and no package manifest; dotfile-manager files (`.chezmoiroot`, `dot_*` entries, dotbot `install.conf.yaml`, `.stow-local-ignore`); Home Assistant `configuration.yaml` with `automations.yaml` or a `homeassistant:` key; or 3+ personal rc files at the root (`.zshrc`, `.bashrc`, `.vimrc`, `.tmux.conf`, `.gitconfig`, dotted or not) and no package manifest |
+| 2 | Hardware / Embedded | Within 2 levels of the root: `platformio.ini`, `*.ino` outside `examples/`, KiCad files (`*.kicad_pro`, `*.kicad_pcb`, `*.kicad_sch`), `BOM.csv` |
+| 3 | Game / Interactive | `project.godot`, pygame/arcade/raylib/bevy/love2d imports, Phaser/PixiJS/Babylon imports, game asset dirs (sprites/, levels/, textures/) |
+| 4 | Visual Output / CV | cv2/mediapipe/dlib imports + VideoCapture/imwrite/landmark/bounding.box. Also: matplotlib/plotly/d3/chart.js/bokeh/seaborn with data pipeline (Data Viz subtype) |
+| 5 | Generative AI | diffusers/StableDiffusion/comfyui imports. Uses Visual Output template. |
+| 6 | Bot | discord.py/discord.js/telegram/slack-bolt/botfather imports, bot token patterns |
+| 7 | Browser Extension | manifest.json with permissions/content_scripts/background |
+| 8 | Mobile App | pubspec.yaml (Flutter), react-native dep, android/+ios/ dirs, .xcodeproj |
+| 9 | Desktop Application | Electron/Tauri/Qt/GTK/SwiftUI/WPF imports, .desktop files |
+| 10 | TUI Application | textual/blessed/tview/bubbletea/cursive/crossterm/ncurses imports. Uses CLI Tool template. |
+| 11 | Documentation Site / SSG | docusaurus.config/vitepress/mkdocs.yml/astro.config/sphinx conf.py |
+| 12 | Web Application | Server framework (express/fastapi/flask/django/next/nuxt/svelte/rails) + dev/start/serve script + frontend files (pages/, components/, src/pages/, src/components/, templates/, public/, or index.html) |
+| 13 | API / Backend Service | Server framework + NO frontend files. Everything that missed priority 12 for lack of frontend files lands here. |
+| 14 | CLI Tool | bin in manifest, argparse/click/typer/clap/cobra imports, console_scripts entry point |
+| 15 | Framework | Plugin system, middleware patterns, scaffolding CLI, create-* package |
+| 16 | ML/AI Model | torch/tensorflow/jax imports + model dirs + training scripts (WITHOUT visual output signals) |
+| 17 | DevOps / Infrastructure | Kubernetes manifests, Terraform files, Ansible playbooks, Helm charts |
+| 18 | Educational / Awesome | awesome- prefix, curated link lists, no source code |
+| 19 | Library / Package | exports/lib field, public API, no bin, no server framework |
+| 20 | Other / Unknown | Nothing above matched -- infer from codebase |
 
 ### 1c. Scan community and config files
 
 ```
-Glob: LICENSE*, CONTRIBUTING*, CODE_OF_CONDUCT*, SECURITY*, CHANGELOG*, CHANGES*, HISTORY*, .github/FUNDING.yml, .github/workflows/*, GOVERNANCE*, ROADMAP*, docs/
+Glob: LICENSE*, CONTRIBUTING*, CODE_OF_CONDUCT*, SECURITY*, CHANGELOG*, CHANGES*, HISTORY*, .github/FUNDING.yml, .github/workflows/*, GOVERNANCE*, ROADMAP*, ARCHITECTURE*, docs/
 Glob: AGENTS.md, llms.txt, CLAUDE.md
 Glob: Dockerfile, docker-compose*, .dockerignore
 ```
@@ -109,10 +112,11 @@ If README.md exists, read it. Classify each H2 section as auto-generatable, huma
 ### 1g. Special detection
 
 **Solo project:** contributors == 1 AND stars < 5 AND no CONTRIBUTING.md.
-**Academic:** .university or .edu in manifest groupId/org, assessment brief files (instructions.md, brief.md, assignment.md), course module codes in repo name.
+**Academic:** .university or .edu in manifest groupId/org, assessment brief files (instructions.md, brief.md, assignment.md), course module codes in repo name. Research write-up subtype: a paper or report in the repo (`paper/*.tex`, `report.pdf`, `thesis.pdf`), or an Academic project whose main output is notebooks plus a `results/` or `figures/` directory.
 **GitHub Pages:** CNAME file at root, .nojekyll, raw index.html with no manifest, gh-pages branch.
-**Early-stage:** No manifest OR manifest has <3 fields OR <5 source files.
+**Early-stage:** No manifest OR manifest has <3 fields OR <5 source files. Personal config and Hardware repos rarely have a manifest, so for them only the file count applies (config files, sketches, schematics, and BOMs count).
 **Monorepo:** workspaces in package.json, [workspace] in Cargo.toml, lerna.json, pnpm-workspace.yaml, packages/ or apps/ directory.
+**Component count:** workspace members (Cargo, npm, or pnpm workspaces, `go.work`), entries under `apps/` and `packages/`, or top-level directories with their own manifest or package marker (`__init__.py`, `mod.rs`, `index.ts`). 3+ shows the ARCHITECTURE.md line in Phase 2b.
 
 ### 1h. Name resolution
 
@@ -156,6 +160,20 @@ Step 2 -- Look at each found image and decide if it belongs in a README. Not eve
 
 Only reference images that would help a reader understand what the project does or looks like. When in doubt, skip it. Record which template screenshot positions (MUST/SHOULD/COULD) the usable images cover.
 
+### 1k. Limits and outbound data
+
+Evidence for the Limitations and Privacy sections (Phase 3b). Ignore hits under tests/, examples/, docs/, and vendored or generated directories, and in dev-only dependencies.
+
+```
+Grep pattern (OS gates): (sys\.platform|platform\.system\(\)|os\.name ==|#\[cfg\((not\()?(target_os|windows|unix)|runtime\.GOOS|process\.platform)
+Grep pattern (unfinished paths): (raise NotImplementedError|unimplemented!\(|todo!\()
+Grep pattern (telemetry SDKs): (posthog|@segment/|analytics-node|segment\.io|sentry_sdk|@sentry/|sentry-go|sentry::|mixpanel|amplitude|@datadog/browser-rum|datadog_rum|firebase/analytics|firebase_analytics|FirebaseAnalytics|gtag\(|googletagmanager|plausible|@vercel/analytics|bugsnag|rollbar)
+Grep pattern (LLM providers): (OPENAI_API_KEY|ANTHROPIC_API_KEY|GEMINI_API_KEY|GOOGLE_API_KEY|MISTRAL_API_KEY|COHERE_API_KEY|GROQ_API_KEY|OPENROUTER_API_KEY|AZURE_OPENAI|api\.openai\.com|api\.anthropic\.com)
+Glob: **/PrivacyInfo.xcprivacy
+```
+
+Also record: version bounds from 1a (`engines`, `requires-python`, `rust-version`, SDK constraints, the `go` directive), `os` / `cpu` fields in package.json, the CI OS matrix (`runs-on`, `matrix.os` in `.github/workflows/*`), and dependencies that exist for one platform only (`pyobjc`, `pywin32`, `[target.'cfg(windows)'.dependencies]`, `sys_platform ==` markers). A telemetry hit counts only where the SDK is initialised in this project's code. Skip the data-flow evidence when sending data is the product (the repo is the analytics SDK or an LLM client library).
+
 ## Phase 2: ASK
 
 ### 2a. Required questions (0-3 max, priority ordered)
@@ -190,14 +208,22 @@ Before I generate, a few quick choices (press Enter to skip any):
                 Only shown if Phase 1j found no usable image for a MUST
                 screenshot position and minimal wasn't already requested.
                 This is the only screenshot question.
+
+ Architecture:  [Also write ARCHITECTURE.md] [Skip]
+                Default: Skip
+                Only shown when detailed was requested or Phase 1g
+                counted 3+ components, and no ARCHITECTURE.md exists.
+                Ignored if Minimal is chosen above.
 ```
 
 Unanswered choices use defaults. "Go", "just do it", or Enter accepts all defaults.
 
+The ARCHITECTURE.md offer lives only in this block. It has a default (Skip), so it never counts toward the 3-question cap and is never asked as a separate question. If the user picks Detailed here and the line wasn't shown, don't ask again; note in the Phase 5 summary that ARCHITECTURE.md is available on request.
+
 ### Verbosity levels
 
 **minimal** -- Ship fast. Personal projects, prototypes, hackathons.
-- Includes: Title, description (1-2 sentences), install, basic usage (one example), license
+- Includes: Title, description (1-2 sentences), install, basic usage (one example), license, plus a one-line Privacy note when Phase 1k found a data flow (Phase 3b)
 - Skips: badges, features, TOC, contributing, community, sponsors, architecture
 - No screenshot placeholders
 - Target: 30-80 lines, whatever the type (overrides the Length Targets table)
@@ -212,7 +238,7 @@ Unanswered choices use defaults. "Go", "just do it", or Enter accepts all defaul
 
 **detailed** -- Polished landing page. Open source launches, portfolio pieces.
 - Includes: all MUST + SHOULD + COULD sections
-- Adds: comparison with alternatives, performance notes, detailed config, env vars table, directory tree
+- Adds: performance notes backed by benchmarks in the repo, detailed config, env vars table, directory tree, a Comparison section only when a source exists (Phase 3b), and the ARCHITECTURE.md offer (Phase 2b)
 - Target: upper half of the type's range, up to the stretched detailed bound in Length Targets. Long reference material (full flag tables, header lists) may go in `## Appendix: ...` sections after License.
 - Triggered by: "detailed", "comprehensive", "full", "polished", "landing page", "launch"
 
@@ -231,16 +257,29 @@ Follow the template ordering, with one override:
 - A scaffold or template command that installs and runs in one step (`npm create ...`, `dotnet new ...`, `go run ...@latest`): Framework, Docs Site, project generators.
 - A per-OS download table or store badges: Desktop, Mobile, Browser Extension, and Game when release binaries exist. Build-from-source steps go later.
 - A hosted URL or one-click deploy button, followed by self-host commands: Web App, API, and Docs Site when a hosted version exists.
+- Build and flash the firmware (`pio run -t upload`, `arduino-cli upload`), with the parts list linked from the prerequisites line: Hardware. A board-only repo (no firmware) points to its fabrication outputs (gerbers, BOM, placement files) instead.
 
 Before it, allow only: title, badges, description (≤2 sentences, plus a router line if Special Detection calls for one), hero image, nav row, TOC. Features, Architecture, Model tables, Sponsors, and everything else go after it. Prerequisites go inside the run section as its first line ("Requires Flutter 3.12+."), never as their own section before or after it. Keep the first command, download table, store badge, or hosted URL within the first 80 lines (50 in minimal).
 
 Library / Package: a code snippet of 10 lines or fewer may precede the install line inside the first H2.
 
+Research write-up (Special Detection): a Results section (the key figure and metrics table) may also precede the run section. The run section still needs one runnable command that reproduces a result, such as the training or evaluation script, or `jupyter nbconvert --execute` on the main notebook. The 80-line limit still applies.
+
 Exempt: Educational / Awesome lists, personal config / dotfiles repos (a browse index with nothing to install), and ARCHITECTURE.md.
 
-**Expected result.** End the Quick Start with what the reader should see: the URL and port for servers (read from config or framework defaults), the `--help` or `--version` output for CLIs (Phase 1c already ran `--help`), the generated file or folder for generators, or a `// =>` result comment for libraries only when a test fixture confirms the value. Never invent output. If nothing is verifiable, end on the command.
+**Expected result.** End the Quick Start with what the reader should see: the URL and port for servers (read from config or framework defaults), the `--help` or `--version` output for CLIs (Phase 1c already ran `--help`), the generated file or folder for generators, the serial baud rate and first log line for firmware (from `Serial.begin(...)` and the setup code), or a `// =>` result comment for libraries only when a test fixture confirms the value. Never invent output. If nothing is verifiable, end on the command.
 
 **Install chooser.** When a CLI, Desktop app, Library, or DevOps tool ships through several channels, show one primary method expanded and marked "(Recommended)": the one the project's own docs lead with, else the ecosystem's package manager. Give every other method a one-line "Use this if ..." and put them in `<details>` when there are more than 3. Detect channels from `Formula/` or a tap reference, `snapcraft.yaml`, `*.nuspec`, `flake.nix`, `Dockerfile`, `.goreleaser.yml`, release workflow artifacts, and `pyproject.toml` extras. List only channels with evidence.
+
+**Limitations.** Build them only from Phase 1k evidence. Version floors belong on the prerequisites line; limitations are upper bounds and exclusions, OS gates that exit or raise, `NotImplementedError` / `unimplemented!()` / `todo!()` on public paths, and one-platform-only dependencies. A CI matrix without an OS makes that OS untested, not unsupported, unless code also gates it. Each item names its evidence: "Windows is not supported (`main.py` exits when `sys.platform == "win32"`; CI runs Linux and macOS only)." One item: a "Not supported: ..." (or "Untested: ...") line in the run section, right after the prerequisites line. Two or more: a `## Limitations` section (SHOULD) after Usage and Config, before Contributing. No evidence: no section and no line, never "No known limitations". Never collapse it in `<details>`.
+
+**Privacy.** Required when Phase 1k found an initialised telemetry, analytics, or error-reporting SDK, a `PrivacyInfo.xcprivacy`, or an outbound LLM provider key. Title it `## Privacy` (or "What is sent"), after Config and before Contributing; for Browser Extensions, fold it into Permissions/Privacy. Give one line per destination: what is sent (from the call sites: event names, captured fields, prompt contents and attached files), where (the vendor, plus the host if code configures one), and whether it is on by default. Opt-out: name only an env var, CLI flag, or config key the code reads, quoted exactly ("Set `DO_NOT_TRACK=1` to disable."). If none is found, write "No opt-out found in the code." rather than claiming none exists. For `PrivacyInfo.xcprivacy`, list its collected data types and tracking flag and link the file. In minimal, compress this to one line after the usage example.
+
+**Comparison.** Detailed mode only, and only from the existing README (human-authored, preserved under Enhance Mode), `docs/`, or text the user supplies. Never research or invent one, and never ask a Phase 2 question for it. Name each alternative and link it, link a source for every claim (a benchmark, the alternative's docs), and include at least one dimension where this project loses or doesn't apply. Never compare against unnamed "other tools" or "traditional approaches". No source: no section.
+
+**Architecture section.** Draw only the components and edges Phase 1 found. Minimal: none. Standard: at most one Mermaid diagram, 2-4 sentences, and a link to ARCHITECTURE.md or an existing architecture doc when there is one. Detailed: the same cap when ARCHITECTURE.md is being written; otherwise the template's full Architecture section.
+
+**ARCHITECTURE.md.** Only when chosen in Phase 2b or asked for directly. Follow `references/architecture-mode.md` (relative to this skill's base directory) after the README draft passes Phase 4, and link the file from Contributing, or from Docs when there is no Contributing section.
 
 Apply all anti-AI writing rules during generation (see section below), not only as a post-pass. The full catalog with replacements and register notes is in `references/anti-ai-rules.md` (relative to this skill's base directory). Read it before writing prose.
 
@@ -296,7 +335,7 @@ If over: trim COULD sections first; in detailed mode, move reference material in
 
 ## Type-to-Template Mapping
 
-These lists set which sections each type gets. Placement of the run section (Install, Quick Start, Getting Started, Download table, store links, Demo link + self-host, One-line scaffold) is governed by the Run-first rule in Phase 3b, which overrides the order shown here. Prerequisites and requirements listed below fold into the run section as its first line; longer hardware or platform tables can stay as later sections.
+These lists set which sections each type gets. Placement of the run section (Install, Quick Start, Getting Started, Download table, store links, Demo link + self-host, One-line scaffold) is governed by the Run-first rule in Phase 3b, which overrides the order shown here. Prerequisites and requirements listed below fold into the run section as its first line; longer hardware or platform tables can stay as later sections. Limitations, Privacy, and Comparison can appear in any type; Phase 3b says when and where.
 
 **Web Application:**
 Title+Logo, Badges, Nav links, Description, `<!-- screenshot:hero -->`, Features, Demo link, Install (Docker-first), Config, Architecture, Docs, Contributing, Community, Sponsors, License
@@ -343,6 +382,12 @@ Title+Logo, Badges, Tagline, `<!-- screenshot:hero | description=Generated outpu
 **Bot:**
 Title+Avatar, Tagline, Badges, Description, Features/Commands, Quick Start (bot registration as the prerequisite, then token, config, run), Config (.env), Commands reference, Plugins/Cogs, Docker, Contributing, License
 
+**Personal config / dotfiles:**
+Title, Description (whose setup, which OS and tools), What this repo is (and isn't), Browse index (table of path and what it configures), `<!-- screenshot:hero | description=Desktop or editor with this config applied | priority=COULD -->`, Apply (only when the repo ships an installer or a stow, chezmoi, or dotbot config), Credits (configs it borrows from), License
+
+**Hardware / Embedded:**
+Title, Badges, Description (what the device does, board or MCU), `<!-- screenshot:hero | description=Photo of the assembled device | priority=SHOULD -->`, Getting Started (build and flash), Bill of Materials (table from `BOM.csv`), Wiring (pin table from the pin definitions in code, schematic image, and a `> [!WARNING]` at each step where the BOM or code shows a hazard), Assembly, Firmware config, PCB (KiCad sources and fab outputs), Contributing, License (hardware and firmware licenses can differ)
+
 **Other / Unknown:**
 Title, Badges, Description, Features, Install, Quick Start, Docs, Contributing, License
 (Add/remove sections based on codebase analysis. This is the minimal safe default.)
@@ -386,6 +431,8 @@ Title, Badges, Description, Features, Install, Quick Start, Docs, Contributing, 
 - All MUST sections for detected type are present
 - All detected community files are referenced
 - At least one code example for types that need it
+- Limitations, Privacy, and Comparison appear only with Phase 1k or sourced evidence, and every claim in them names its evidence or links its source; Privacy is present whenever Phase 1k found a data flow
+- If ARCHITECTURE.md was generated, it passed its own verify step (`references/architecture-mode.md`) and the README links it
 
 ### Formatting
 - Single H1, consistent heading hierarchy
@@ -406,7 +453,10 @@ Sections: [list].
 Skipped: [list with reasons].
 Placeholders: [count and types].
 Warnings: [any issues].
+Companion: ARCHITECTURE.md, [N] lines, [K] TODO markers (only if generated).
 ```
+
+If ARCHITECTURE.md was generated, present it in full after the README; one approval covers both files.
 
 Ask: "Want to change anything before I write this?"
 
@@ -420,7 +470,7 @@ Loop until approved or aborted. After the first pass, apply only the specific re
 
 ## Phase 6: WRITE
 
-Write README.md to the project root. Confirm: "README.md written. [N] lines."
+Write README.md to the project root, and ARCHITECTURE.md beside it if it was generated. Confirm: "README.md written. [N] lines." (plus the ARCHITECTURE.md line count).
 
 If an existing README was replaced, note that the old version can be recovered via git (if git is initialized).
 
@@ -552,6 +602,7 @@ When detected: default Contributing to "Skip", suppress "PRs Welcome" badge, ski
 ### Academic / Coursework
 Signals: .university or .edu in manifest groupId/org, assessment brief files, single contributor, no license, module codes in repo name.
 When detected: default Contributing to "Skip" with academic integrity note, add "Developed as part of [module] at [university]" if inferable, emphasize architecture and design decisions (after the run section), link to documentation directory, no "PRs Welcome" badge, default license to "Skip."
+Research write-up subtype (Phase 1g): keep the detected type's template, but a Results section may precede the run section (Phase 3b). Take every number in it from a results file, notebook output, or the paper, and link the paper. Add Citation/BibTeX when a `CITATION.cff` or `.bib` entry exists. One runnable command that reproduces a result is still required; if the repo has none, insert `<!-- TODO: command that reproduces the results -->`.
 
 ### GitHub Pages / Static Site
 Signals: CNAME at root, .nojekyll, raw index.html with no manifest, gh-pages branch.
@@ -559,7 +610,7 @@ When detected: auto-generate "Live Site" link from CNAME, add GitHub Pages badge
 
 ### Early-stage project
 Signals: no manifest OR manifest <3 fields OR <5 source files.
-When detected: generate only Title, Description, Install (if any), Usage, License. Target 30-60 lines, overriding verbosity and the Length Targets table. Skip badges, TOC, features, Docker, Contributing.
+When detected: generate only Title, Description, Install (if any), Usage, License. Target 30-60 lines, overriding verbosity and the Length Targets table. Skip badges, TOC, features, Docker, Contributing. Personal config and Hardware repos are judged on file count alone (Phase 1g).
 
 ### Monorepo
 Signals: workspaces in package.json, [workspace] in Cargo.toml, lerna.json, pnpm-workspace.yaml, packages/ or apps/ directory.
@@ -613,6 +664,8 @@ Standard-mode ranges. Minimal and early-stage projects use the Phase 3f ranges i
 | Mobile App | 150-350 |
 | Documentation Site / SSG | 60-200 |
 | Bot | 140-400 |
+| Personal config / dotfiles | 30-200 |
+| Hardware / Embedded | 100-400 |
 | Other | 80-300 |
 
 ## Screenshot Placeholder Format
@@ -625,6 +678,8 @@ Standard-mode ranges. Minimal and early-stage projects use the Phase 3f ranges i
 
 | Detection Category | Slug |
 |--------------------|------|
+| Personal config / dotfiles | dotfiles |
+| Hardware / Embedded | hardware |
 | Game / Interactive | game |
 | Visual Output / CV | visual |
 | Generative AI | gen-ai |

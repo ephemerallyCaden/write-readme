@@ -1,8 +1,10 @@
 # Category-Specific README Structure Templates
 
-> 15 project types, 45+ repos analyzed. Each template defines section ordering, MUST/SHOULD/COULD priorities, above-the-fold content, ideal length, and unique sections.
+> 17 project types, 45+ repos analyzed. Each template defines section ordering, MUST/SHOULD/COULD priorities, above-the-fold content, ideal length, and unique sections.
 
-> **Ordering override:** SKILL.md Phase 3b's Run-first rule wins over the orderings below. The run section is always the first H2; only the title, badges, description (≤2 sentences, plus an optional router line), hero image, nav row, and TOC come before it. What counts as the run section depends on the type: install + run command for most types, a scaffold command for Frameworks and Docs Sites, a download table or store badges for Desktop, Mobile, and Browser Extension, and a hosted URL or deploy button followed by self-host commands for Web Apps, APIs, and hosted Docs Sites. Prerequisites go inside the run section as its first line. Educational / Awesome lists, personal config / dotfiles repos, and ARCHITECTURE.md are exempt.
+> **Ordering override:** SKILL.md Phase 3b's Run-first rule wins over the orderings below. The run section is always the first H2; only the title, badges, description (≤2 sentences, plus an optional router line), hero image, nav row, and TOC come before it. What counts as the run section depends on the type: install + run command for most types, a scaffold command for Frameworks and Docs Sites, a download table or store badges for Desktop, Mobile, and Browser Extension, and a hosted URL or deploy button followed by self-host commands for Web Apps, APIs, and hosted Docs Sites, and the build-and-flash command for Hardware. Prerequisites go inside the run section as its first line. A research write-up may put Results before the run section. Educational / Awesome lists, personal config / dotfiles repos, and ARCHITECTURE.md are exempt.
+
+> **Evidence-only sections (every type):** Limitations, Privacy, and Comparison are not listed per template. SKILL.md Phase 3b says when each appears and where it goes. Architecture rows below follow the Phase 3b cap: in standard mode, one Mermaid diagram, 2-4 sentences, and a link.
 
 ---
 
@@ -25,6 +27,8 @@
 | **Mobile App** | Device screenshots, Store badges, Platform compatibility, Translation/Localization |
 | **Documentation Site / SSG** | Generated output screenshot, Deploy buttons, Showcase/"Trusted by" |
 | **Bot** | Bot registration steps, Commands reference, Token/config setup, Plugins/Cogs |
+| **Personal config / dotfiles** | What this repo is (and isn't), Browse index, Apply step (only with an installer) |
+| **Hardware / Embedded** | Bill of Materials table, Wiring/pin table, Safety callouts, PCB files |
 
 ---
 
@@ -49,27 +53,29 @@ Standard-mode ranges. SKILL.md Phase 3f sets the minimal, early-stage, and detai
 | Mobile App | 150-350 | Visual + download-heavy |
 | Documentation Site / SSG | 60-200 | Ultra-hub-and-spoke |
 | Bot | 140-400 | Setup-heavy |
+| Personal config / dotfiles | 30-200 | Browse index |
+| Hardware / Embedded | 100-400 | Setup-heavy, photo-heavy |
 
 ---
 
 ## Cross-Category Section Matrix
 
-| Section | WebApp | CLI | Lib | Frame | Game | CV | ML | Desktop | DevOps | Edu | BrExt | API | Mobile | Docs | Bot |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Logo/Banner | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | COULD | MUST | MUST | MUST | MUST | MUST |
-| Badges | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD |
-| Screenshot/Demo | MUST | MUST(GIF) | -- | COULD | MUST | MUST | COULD | MUST | -- | -- | SHOULD | -- | MUST | SHOULD | -- |
-| Description | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST |
-| Features | MUST | SHOULD | SHOULD | SHOULD | SHOULD | MUST | SHOULD | MUST | MUST | -- | MUST | MUST | MUST | SHOULD | MUST |
-| Code Example | -- | SHOULD | MUST | SHOULD | -- | SHOULD | SHOULD | -- | COULD | -- | -- | MUST | -- | -- | -- |
-| Install | MUST | MUST | MUST | MUST | SHOULD | MUST | MUST | MUST | MUST | -- | MUST | MUST | MUST | MUST | MUST |
-| Quick Start | MUST | MUST | MUST | MUST | -- | MUST | MUST | -- | MUST | -- | -- | MUST | -- | MUST | MUST |
-| Docs link | MUST | COULD | MUST | MUST | SHOULD | MUST | MUST | SHOULD | MUST | -- | COULD | MUST | SHOULD | MUST | SHOULD |
-| TOC | COULD | MUST* | COULD | COULD | COULD | COULD | COULD | COULD | COULD | MUST | COULD | COULD | COULD | -- | COULD |
-| Contributing | MUST | SHOULD | SHOULD | MUST | SHOULD | SHOULD | SHOULD | MUST | MUST | MUST | SHOULD | MUST | MUST | MUST | SHOULD |
-| License | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST |
+| Section | WebApp | CLI | Lib | Frame | Game | CV | ML | Desktop | DevOps | Edu | BrExt | API | Mobile | Docs | Bot | Dot | HW |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Logo/Banner | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | COULD | MUST | MUST | MUST | MUST | MUST | COULD | COULD |
+| Badges | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | COULD | COULD |
+| Screenshot/Demo | MUST | MUST(GIF) | -- | COULD | MUST | MUST | COULD | MUST | -- | -- | SHOULD | -- | MUST | SHOULD | -- | COULD | SHOULD |
+| Description | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST |
+| Features | MUST | SHOULD | SHOULD | SHOULD | SHOULD | MUST | SHOULD | MUST | MUST | -- | MUST | MUST | MUST | SHOULD | MUST | -- | SHOULD |
+| Code Example | -- | SHOULD | MUST | SHOULD | -- | SHOULD | SHOULD | -- | COULD | -- | -- | MUST | -- | -- | -- | -- | -- |
+| Install | MUST | MUST | MUST | MUST | SHOULD | MUST | MUST | MUST | MUST | -- | MUST | MUST | MUST | MUST | MUST | COULD | MUST |
+| Quick Start | MUST | MUST | MUST | MUST | -- | MUST | MUST | -- | MUST | -- | -- | MUST | -- | MUST | MUST | -- | SHOULD |
+| Docs link | MUST | COULD | MUST | MUST | SHOULD | MUST | MUST | SHOULD | MUST | -- | COULD | MUST | SHOULD | MUST | SHOULD | -- | COULD |
+| TOC | COULD | MUST* | COULD | COULD | COULD | COULD | COULD | COULD | COULD | MUST | COULD | COULD | COULD | -- | COULD | COULD | COULD |
+| Contributing | MUST | SHOULD | SHOULD | MUST | SHOULD | SHOULD | SHOULD | MUST | MUST | MUST | SHOULD | MUST | MUST | MUST | SHOULD | -- | SHOULD |
+| License | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST |
 
-*MUST if over 150 lines
+*MUST if over 150 lines. Dot = Personal config / dotfiles, HW = Hardware / Embedded. Dotfiles Install means an Apply step, only when the repo ships an installer. The Hardware screenshot is a device photo, which can't be auto-captured.
 
 ---
 
@@ -176,12 +182,12 @@ Title+Logo, Badges, Tagline, Description, Features/Why, Quick Start (scaffold co
 | Badges | SHOULD | 0-6, only with real data |
 | Tagline | SHOULD | Punchy one-liner |
 | Description | MUST | What it does, philosophy |
-| Features/Why | SHOULD | Why this framework over alternatives |
+| Features/Why | SHOULD | What it does differently, stated as facts about this framework. Comparisons with named alternatives follow the Comparison rule (SKILL.md Phase 3b) |
 | Quick Start | MUST | Scaffold command that gets a project running |
 | Install | MUST | |
 | Docs | MUST | Link to comprehensive docs |
 | Ecosystem/Plugins | SHOULD | Available integrations |
-| Migration | COULD | From previous versions or competing frameworks |
+| Migration | COULD | From previous versions (CHANGELOG or docs/), or from another framework only when docs/ has that guide |
 | Community | SHOULD | |
 | Contributing | MUST | |
 | License | MUST | |
@@ -490,3 +496,70 @@ Title+Avatar, Tagline, Badges, Description, Features/Commands, Quick Start (bot 
 
 **Ideal length:** 140-400 lines
 **Model:** Setup-heavy (bot registration is the hard part)
+
+---
+
+### 16. Personal config / dotfiles
+
+**Section ordering:**
+Title, Description, What this repo is (and isn't), Browse index, `<!-- screenshot:hero | description=Desktop or editor with this config applied | priority=COULD -->`, Apply (only with an installer), Credits, License
+
+Run-first exempt: the README is a browse index, and most readers copy one file rather than install the repo.
+
+**Section priorities:**
+
+| Section | Priority | Notes |
+|---|---|---|
+| Title | MUST | |
+| Description | MUST | Whose setup, for which OS, shell, editor, or Home Assistant version (from `.HA_VERSION`, `Brewfile`, package lists) |
+| What this repo is (and isn't) | MUST | Two or three lines: what it configures, and that it is a personal setup to read and copy from, not a framework to install. Name what it doesn't cover only when the repo shows it (no Linux paths, no Windows terminal config) |
+| Browse index | MUST | Table: path, then what it configures. One row per top-level config directory or file; group by tool, not by file type |
+| Screenshot | COULD | A found image, else a placeholder per SKILL.md Phase 3d |
+| Apply | COULD | Only when the repo ships `install.sh`, a Makefile target, or a stow, chezmoi, or dotbot config. Quote its real command and say what it overwrites or symlinks |
+| Credits | COULD | Configs it borrows from, only when files or comments name them |
+| License | MUST | One line |
+
+**Ideal length:** 30-200 lines
+**Model:** Browse index. Home Assistant configs often add an automations index (automation file, then what it does).
+
+---
+
+### 17. Hardware / Embedded
+
+**Section ordering:**
+Title, Badges, Description, `<!-- screenshot:hero | description=Photo of the assembled device | priority=SHOULD -->`, Getting Started (build and flash), Bill of Materials, Wiring, Assembly, Firmware config, PCB, Contributing, License
+
+**Section priorities:**
+
+| Section | Priority | Notes |
+|---|---|---|
+| Title | MUST | |
+| Badges | COULD | 0-6. Usually none: there is rarely a registry or CI |
+| Description | MUST | What the device does, the board or MCU (`board =` in `platformio.ini`, the FQBN in `sketch.yaml`) |
+| Device photo | SHOULD | A photo can't be auto-captured; use a found image or a placeholder |
+| Getting Started | MUST | First line: "Requires the parts in [Bill of Materials](#bill-of-materials) and PlatformIO." Then build and flash (`pio run -t upload`, `arduino-cli compile` + `upload`). End with the serial baud rate and first log line from the setup code. Board-only repos point to the fab outputs instead |
+| Bill of Materials | MUST when `BOM.csv` or a KiCad BOM export exists | Table built from the file's own columns (reference, quantity, part, value or footprint, link). Never add prices, suppliers, or links the file doesn't have |
+| Wiring | SHOULD | Pin table from the pin definitions in code (`#define LED_PIN 4`, `const int`, `-D` build flags), plus the schematic image or KiCad export if found |
+| Safety callouts | MUST when evidenced | `> [!WARNING]` directly above the step where the hazard arises, naming it: mains voltage (relay or AC modules in the BOM), lithium cells and charging (LiPo, 18650, charger ICs), reversed VCC/GND on unprotected boards, motor and heater current limits, logic levels (5 V parts on a 3.3 V MCU). Only hazards the BOM, schematic, or code shows; never a generic "be careful" line |
+| Assembly | COULD | Only from build notes or photos in the repo |
+| Firmware config | SHOULD | Build flags, `config.h` keys, Wi-Fi or secrets files the code reads |
+| PCB | SHOULD when KiCad files exist | KiCad source paths, fab outputs (gerbers, drill, placement), and the KiCad version from the project file |
+| Contributing | SHOULD | |
+| License | MUST | Hardware and firmware may carry different licenses (CERN-OHL, MIT); read every LICENSE file |
+
+**Ideal length:** 100-400 lines
+**Model:** Setup-heavy (parts, wiring, flashing), photo-heavy
+
+---
+
+### Modifier: Research write-up
+
+Applies on top of the detected type's template (usually ML, Visual Output, or Other) when SKILL.md Phase 1g flags the Academic research write-up subtype.
+
+| Section | Priority | Notes |
+|---|---|---|
+| Results | MUST | May precede the run section. The key figure and a metrics table, each number taken from a results file, notebook output, or the paper |
+| Paper / report link | MUST | Link the PDF or `.tex` source in the repo |
+| Run section | MUST | One runnable command that reproduces a result, even when the write-up is the point |
+| Citation/BibTeX | SHOULD | Only from `CITATION.cff` or a `.bib` entry |
+| Dataset | SHOULD | Where the data comes from and its license, from the code or the paper |
