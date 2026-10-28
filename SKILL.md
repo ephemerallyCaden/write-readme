@@ -97,15 +97,23 @@ Use the unified taxonomy below. First match wins (lowest priority number). Perso
 
 ```
 Glob: LICENSE*, CONTRIBUTING*, CODE_OF_CONDUCT*, SECURITY*, CHANGELOG*, CHANGES*, HISTORY*, .github/FUNDING.yml, .github/workflows/*, GOVERNANCE*, ROADMAP*, ARCHITECTURE*, docs/
+Glob: .github/CONTRIBUTING*, .github/CODE_OF_CONDUCT*, .github/SECURITY*, docs/CONTRIBUTING*, docs/CODE_OF_CONDUCT*, docs/SECURITY*
 Glob: AGENTS.md, llms.txt, CLAUDE.md
 Glob: Dockerfile, docker-compose*, .dockerignore
 ```
 
-Shell equivalent of the three Glob lines:
+Shell equivalent of the four Glob lines:
 ```bash
 find . -maxdepth 1 \( -name 'LICENSE*' -o -name 'CONTRIBUTING*' -o -name 'CODE_OF_CONDUCT*' -o -name 'SECURITY*' -o -name 'CHANGELOG*' -o -name 'CHANGES*' -o -name 'HISTORY*' -o -name 'GOVERNANCE*' -o -name 'ROADMAP*' -o -name 'ARCHITECTURE*' -o -name docs -o -name AGENTS.md -o -name llms.txt -o -name CLAUDE.md -o -name Dockerfile -o -name 'docker-compose*' -o -name .dockerignore \)
 find . -maxdepth 3 \( -path ./.github/FUNDING.yml -o -path './.github/workflows/*' \)
+find . -maxdepth 2 \( -path './.github/*' -o -path './docs/*' \) \( -name 'CONTRIBUTING*' -o -name 'CODE_OF_CONDUCT*' -o -name 'SECURITY*' \)
 ```
+
+GitHub reads CONTRIBUTING, CODE_OF_CONDUCT, and SECURITY files from the root, `.github/`, or `docs/`; a file in any of the three counts as existing everywhere this file says one exists.
+
+Reporting channel, for the Phase 2b Code of Conduct line. Look for one only when no CODE_OF_CONDUCT file exists, or when one still says `[INSERT CONTACT METHOD]` (critique mode fixes that), and record each one found:
+- GitHub private vulnerability reporting: with a `github.com` remote and `gh` installed and logged in, `gh api repos/<owner>/<repo>/private-vulnerability-reporting --jq .enabled` prints `true` when it is on. Any other output, or an error, means not found. The channel is the form at `https://github.com/<owner>/<repo>/security/advisories/new`.
+- A SECURITY file's contact: an email address or an `https://` URL that the SECURITY file gives as where to send reports.
 
 Grep for env vars:
 ```
@@ -285,7 +293,7 @@ A required question is one with no safe default. These are the only ones, wherev
 4. If monorepo: "Generate README for the root monorepo or a specific package?" If cut: root.
 5. "Should the title be [A] or [B]?" -- only if Phase 1h found a display name and a manifest name that differ (its rule says exactly when). If cut: the Phase 1h title.
 
-Hard cap: 3 required questions. After 3, use the "If cut" default for the rest. The optional choices block in 2b does not count toward the cap, because every item in it has a default.
+Hard cap: 3 required questions. After 3, use the "If cut" default for the rest. The optional choices block in 2b does not count toward the cap, because every item in it has a default. That includes the Code of Conduct contact line, which is part of the Code of Conduct choice, not a question of its own.
 
 ### 2b. Optional choices (single block, all skippable)
 
@@ -297,8 +305,19 @@ Before I generate, a few quick choices (press Enter to skip any):
  License:       [MIT] [Apache-2.0] [GPL-3.0] [Skip -- no license]
                 Default: Skip if none exists, keep current if one exists
 
- Contributing:  [Include section] [Skip]
+ Contributing:  [Include section] [Section + write CONTRIBUTING.md] [Skip]
                 Default: Include for multi-contributor projects, Skip for solo/academic
+                The CONTRIBUTING.md option is shown only when no
+                CONTRIBUTING file exists and Phase 1 found at least
+                one build, test, or lint command.
+
+ Code of Conduct: [Add Contributor Covenant 2.1] [Skip]
+                Default: Skip
+                When a CODE_OF_CONDUCT file exists, the only option is
+                [Link existing], and it is the default.
+   Contact:     [<each channel Phase 1c found>] or type an email or URL
+                Only with Add. Default: the first channel Phase 1c found;
+                with none found and none typed, Add becomes Skip.
 
  Verbosity:     [Minimal] [Standard] [Detailed]
                 Default: Standard (or inferred from context)
@@ -317,7 +336,7 @@ Before I generate, a few quick choices (press Enter to skip any):
                 exists. Ignored if Minimal is chosen above.
 ```
 
-Unanswered choices use defaults. "Go", "just do it", or Enter accepts all defaults.
+Unanswered choices use defaults. "Go", "just do it", or Enter accepts all defaults. None of these choices, the Code of Conduct contact included, counts toward the Phase 2a cap of 3 questions.
 
 License: "one exists" means a `LICENSE*`, `LICENCE*`, or `COPYING*` file at the project root. Keep current: the License section names that license and links the file. Skip never removes the section, because License is MUST in every template; it produces this exact one-line section:
 ```markdown
@@ -333,13 +352,42 @@ Picking MIT, Apache-2.0, or GPL-3.0 when no license file exists adds a second fi
 
 The copyright holder is the solo author's name that the Phase 1g contributor count prints, else `git config user.name`. If neither gives a name, the Phase 5 summary says so, and Phase 6 writes LICENSE only after the user names the holder.
 
+Community files. Writing CONTRIBUTING.md or CODE_OF_CONDUCT.md follows the LICENSE rules above: only an explicit pick writes one (no default does, and "go", Enter, or an unanswered block never does), the draft is built in `<draft-dir>`, Phase 5 lists it, Phase 6 writes it only after approval, and an existing file (root, `.github/`, or `docs/`) is never overwritten or duplicated.
+
+Code of Conduct:
+- Link existing: the README links that file at its real path.
+- Add: copy `<skill-dir>/references/community/CODE_OF_CONDUCT-2.1.md` (the Contributor Covenant 2.1, unmodified) to `<draft-dir>/CODE_OF_CONDUCT.md` and replace its one `[INSERT CONTACT METHOD]` with the contact. Change nothing else in the text. Write the contact as `[this repository's private reporting form](https://github.com/<owner>/<repo>/security/advisories/new)` for GitHub private vulnerability reporting, `[<email>](mailto:<email>)` for an email address, or `[<url>](<url>)` for a URL. A typed contact counts only when it is an email address (`name@domain.tld`) or an `http://` or `https://` URL. Then `grep -c 'INSERT CONTACT METHOD' <draft-dir>/CODE_OF_CONDUCT.md` must print 0.
+- No contact: Add becomes Skip, no file is written, and the Phase 5 summary warns: "Code of Conduct not added: no reporting contact. Give an email or URL to add it." Never write the file with the placeholder left in.
+
+CONTRIBUTING.md, built in `<draft-dir>/CONTRIBUTING.md` from Phase 1 evidence only, in at most 40 lines:
+```markdown
+# Contributing to <title>
+
+## Setup
+
+<the clone and install commands from the README's run section>
+
+## Checks
+
+<each build, test, lint, and format command the repo defines, verbatim: manifest scripts, Makefile or justfile targets, the `run:` steps of `.github/workflows/*`>
+
+## Pull requests
+
+<only what CI or docs show: the branch pull requests target (`on: pull_request: branches:`), the checks CI runs on them, a PR template path, a commit-message convention with its config file (commitlint, `.czrc`), a DCO check>
+
+<when a Code of Conduct exists or is being added: "Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).", linking its real path>
+```
+Leave out any section with no evidence (no Pull requests section when CI and docs say nothing about pull requests). Never add a policy the repo doesn't show: no CLA, sign-off, review times, style rules, labels, or welcome lines. The anti-AI rules apply in full.
+
+README links, in standard and detailed READMEs: the Contributing section links CONTRIBUTING.md when one exists or is being written, in one line, and the Code of Conduct, existing or added, in another. With Contributing set to Skip, a Code of Conduct gets a one-line `## Code of Conduct` section before License instead. When Phase 6 writes either file, minimal and Early-stage READMEs, which otherwise have no Contributing section, get a one-line `## Contributing` section that links each of the two files that will exist.
+
 The ARCHITECTURE.md offer is never asked as a separate question. If the user picks Detailed here and the line wasn't shown, note in the Phase 5 summary that ARCHITECTURE.md is available on request (unless the project is Early-stage or one already exists).
 
 ### Verbosity levels
 
 **minimal** -- Ship fast. Personal projects, prototypes, hackathons.
 - Includes: Title, description (1-2 sentences), install, basic usage (one example), license, plus a one-line Privacy note when Phase 1k found a data flow (Phase 3b)
-- Skips: badges, features, TOC, contributing, community, sponsors, architecture
+- Skips: badges, features, TOC, contributing and community (except the one-line Contributing section Phase 2b adds when Phase 6 writes CONTRIBUTING.md or CODE_OF_CONDUCT.md), sponsors, architecture
 - No screenshot placeholders
 - Target: 30-80 lines, whatever the type (overrides the Length Targets table)
 - Triggered by: "minimal", "short", "quick", "simple", "brief", or fewer than 5 source files (counted as in Phase 1g)
@@ -467,7 +515,7 @@ The Run-first rule in Phase 3b overrides those orderings: wherever the template 
 - Version is current
 - License section matches the LICENSE file, or is the Phase 2b no-license line when there is no file
 - Install command uses correct package name and works
-- All file path references exist (Glob to verify), or are captures and ARCHITECTURE.md that Phase 6 will write
+- All file path references exist (Glob to verify), or are captures, ARCHITECTURE.md, LICENSE, CONTRIBUTING.md, or CODE_OF_CONDUCT.md that Phase 6 will write
 - Code examples reference real exports (Grep to verify)
 - Config defaults follow the Configuration defaults rule in Phase 3b: the committed asset's value, labelled with its source
 - Badge URLs are syntactically valid
@@ -493,18 +541,19 @@ The Run-first rule in Phase 3b overrides those orderings: wherever the template 
    python3 <skill-dir>/scripts/validate-readme.py <draft-dir>/README.md --type <type_slug> --verbosity <level> --dir <project-root>
    ```
    The checker runs twice because its exit code counts everything at or above `--severity`: the P1 run's exit code is the gate, and the P2 run only lists warnings. Without `--severity` it reports P0 only.
-   `validate-readme.py` checks relative links and badge URLs, the first runnable step (past line 80 in standard and detailed, 50 in minimal; skipped for educational and dotfiles; with `--type game`, a numbered list in the first H2 that opens a scene or project and presses Play also counts), dead in-page anchors, duplicate H2s, header badges (at most 6), dead badge hosts and static badges imitating live status, placeholders outside comments and code, positional image references ("screenshot above"), license text against the LICENSE file, `style=` attributes, and the Phase 3f length range. Its first output line always gives the first runnable step's line. Flags:
+   `validate-readme.py` checks relative links and badge URLs, the first runnable step (past line 80 in standard and detailed, 50 in minimal; skipped for educational and dotfiles; with `--type game`, a numbered list in the first H2 that opens a scene or project and presses Play also counts), dead in-page anchors, duplicate H2s, header badges (at most 6), dead badge hosts and static badges imitating live status, placeholders outside comments and code, positional image references ("screenshot above"), license text against the LICENSE file, a linked Code of Conduct that still says `[INSERT CONTACT METHOD]`, `style=` attributes, and the Phase 3f length range. Its first output line always gives the first runnable step's line. Flags:
    - `--type` takes a canonical type slug and rejects anything else. `--verbosity` sets the run-first and length limits; add `--early-stage` when Phase 1g flagged an Early-stage project, for the 30-60 range.
    - `--dir` must be the project root, not `<draft-dir>`: links and the LICENSE comparison resolve against it.
-   - `--expect PATH` (repeatable) names a file Phase 6 will create, so a link to it isn't reported broken. PATH is relative to the project root, never a `<draft-dir>` path. Pass `--expect ARCHITECTURE.md` when the companion file is being generated, `--expect LICENSE` when Phase 6 will write LICENSE (Phase 2b), and `--expect assets/screenshots/<file>` for each captured image the draft references (`<draft-dir>/assets/screenshots/hero.png` becomes `--expect assets/screenshots/hero.png`).
+   - `--expect PATH` (repeatable) names a file Phase 6 will create, so a link to it isn't reported broken. PATH is relative to the project root, never a `<draft-dir>` path. Pass `--expect ARCHITECTURE.md` when the companion file is being generated, `--expect LICENSE`, `--expect CODE_OF_CONDUCT.md`, and `--expect CONTRIBUTING.md` for each of those Phase 6 will write (Phase 2b), and `--expect assets/screenshots/<file>` for each captured image the draft references (`<draft-dir>/assets/screenshots/hero.png` becomes `--expect assets/screenshots/hero.png`).
    - Length: over the maximum is an issue. Under the minimum prints a note and leaves the exit code alone; it needs no fix, because padding is worse (Phase 3f).
+   When Phase 6 will write CONTRIBUTING.md, run both `check-anti-ai.py` commands on `<draft-dir>/CONTRIBUTING.md` too; its `--severity P1` run is gated the same way. Don't run the checker on `<draft-dir>/CODE_OF_CONDUCT.md`: it is the canonical Contributor Covenant text, which is never edited, so the one check on it is the Phase 2b `grep` for the contact placeholder.
 3. Fix every P0 and P1 finding and re-run until the `--severity P1` check exits 0. The one exception is a finding on a documented rule exception: an emoji next to a brand or mascot name (rule 1), or a banned word inside a real name or identifier the README must quote (a package, product, or file name). Leave that text as it is and list it under "Warnings" in the Phase 5 summary with its reason; the gate is met when only such findings remain. P2 findings and `validate-readme.py` issues: fix, or list them under Warnings with a reason. If `python3` is unavailable, note that in Warnings and rely on step 1.
 
 ### Completeness
 - Run-first rule holds: the first H2 is the run section for this type, prerequisites sit inside it (Phase 3b)
 - Quick Start ends with a verified expected result, or on the command when none is verifiable
 - All MUST sections for detected type are present
-- All detected community files are referenced
+- All detected community files are referenced, and so are the CONTRIBUTING.md and CODE_OF_CONDUCT.md Phase 6 will write (Phase 2b README links)
 - At least one code example for types that need it
 - Limitations, Privacy, and Comparison appear only with Phase 1k or sourced evidence, and every claim in them names its evidence or links its source; Privacy is present whenever Phase 1k found a data flow
 - If ARCHITECTURE.md was generated, it passed its own verify step (`references/architecture-mode.md`) and the README links it
@@ -529,11 +578,14 @@ Skipped: [list with reasons].
 Placeholders: [count and types].
 Captured: [paths to copy into the project, marking any that would overwrite a file] (only if Auto-capture ran).
 License file: LICENSE ([license], Copyright (c) [year] [holder]), a new file (only if Phase 6 will write it).
+Code of Conduct: CODE_OF_CONDUCT.md (Contributor Covenant 2.1, contact: [contact]), a new file (only if Phase 6 will write it).
+Contributing guide: CONTRIBUTING.md, [N] lines, a new file (only if Phase 6 will write it).
+Writes: README.md[, ARCHITECTURE.md][, LICENSE][, CODE_OF_CONDUCT.md][, CONTRIBUTING.md][, captured images]: every file Phase 6 will write.
 Warnings: [any issues].
 Companion: ARCHITECTURE.md, [N] lines, [K] TODO markers (only if generated).
 ```
 
-If ARCHITECTURE.md was generated, present it in full after the README. A LICENSE that Phase 6 will write is listed in the summary, not shown in full, since its text is the standard license. One approval covers every file listed.
+If ARCHITECTURE.md or CONTRIBUTING.md was generated, present it in full after the README. A LICENSE or CODE_OF_CONDUCT.md that Phase 6 will write is listed in the summary, not shown in full, since its text is the standard one; the summary gives the Code of Conduct's contact. One approval covers every file on the Writes line.
 
 Ask: "Want to change anything before I write this?"
 
@@ -541,13 +593,13 @@ The user can:
 - Approve ("looks good", "write it", "ship it") -- proceed to Phase 6
 - Request changes ("make the description shorter", "remove the tech stack table") -- apply, show updated, ask again
 - Request different verbosity ("make it minimal") -- regenerate, show, ask again
-- Abort ("cancel", "nevermind") -- nothing is written to the project, neither README.md nor LICENSE; `<draft-dir>` and its captures are left behind, and the reply gives its path
+- Abort ("cancel", "nevermind") -- nothing is written to the project: no README.md, ARCHITECTURE.md, LICENSE, CODE_OF_CONDUCT.md, CONTRIBUTING.md, or capture; `<draft-dir>` and its files are left behind, and the reply gives its path
 
 Loop until approved or aborted. After the first pass, apply only the specific requested change; do not re-present the full options block.
 
 ## Phase 6: WRITE
 
-Write README.md to the project root, ARCHITECTURE.md beside it if it was generated, and LICENSE from `<draft-dir>/LICENSE` if Phase 2b called for one (never over an existing file). Copy each captured image the README references from `<draft-dir>/assets/` to the same path under the project root, creating directories as needed; the Phase 5 approval covers any overwrite it listed. Confirm: "README.md written. [N] lines." (plus the ARCHITECTURE.md line count, "LICENSE written ([license])." when one was, and the copied image paths).
+Write README.md to the project root, ARCHITECTURE.md beside it if it was generated, and LICENSE, CODE_OF_CONDUCT.md, and CONTRIBUTING.md from `<draft-dir>` for each one Phase 2b called for. Never write one of those three over an existing file: check again just before writing, and if one has appeared since Phase 1 (at the root, or for the two community files in `.github/` or `docs/`), skip it and say so. Copy each captured image the README references from `<draft-dir>/assets/` to the same path under the project root, creating directories as needed; the Phase 5 approval covers any overwrite it listed. Confirm: "README.md written. [N] lines." (plus the ARCHITECTURE.md line count, "LICENSE written ([license])." when one was, "CODE_OF_CONDUCT.md written (Contributor Covenant 2.1)." and "CONTRIBUTING.md written. [N] lines." when they were, and the copied image paths).
 
 If an existing README was replaced, note that the old version can be recovered via git (if git is initialized).
 
@@ -611,7 +663,7 @@ Then continue in the main flow: write the enhanced draft to `<draft-dir>/README.
 What to do when a Phase 1g signal fires. The signals themselves live only in Phase 1g.
 
 ### Solo project
-Default Contributing to "Skip", skip community links, and frame the README as a portfolio piece. If the user overrides, generate a lightweight version: "This is a personal project. Fork it, or open an issue with questions."
+Default Contributing to "Skip", skip the Community section (chat and forum links), and frame the README as a portfolio piece. If the user overrides, generate a lightweight version: "This is a personal project. Fork it, or open an issue with questions." (plus the CONTRIBUTING.md link when Phase 6 writes one). In standard and detailed READMEs, an existing Code of Conduct is still linked (Phase 2b).
 
 ### Academic / Coursework
 Default Contributing to "Skip" with an academic integrity note, add "Developed as part of [module] at [university]" if inferable, emphasize architecture and design decisions (after the run section), link to the documentation directory, and default License to Skip (the Phase 2b one-line section).
@@ -621,7 +673,7 @@ Research write-up subtype: keep the detected type's template, but a Results sect
 Auto-generate a "Live Site" link from CNAME, add a GitHub Pages badge, use "Local Development" instead of "Installation" as the heading, and suggest `python3 -m http.server` or `npx serve`.
 
 ### Early-stage project
-Generate only Title, Description, Install (if any), Usage, and License, plus the one-line Privacy note when Phase 1k found a data flow (Phase 3b). Target 30-60 lines, overriding verbosity and the Length Targets table. Skip badges, TOC, features, Docker, Contributing.
+Generate only Title, Description, Install (if any), Usage, and License, plus the one-line Privacy note when Phase 1k found a data flow (Phase 3b) and the one-line Contributing section when Phase 6 writes CONTRIBUTING.md or CODE_OF_CONDUCT.md (Phase 2b). Target 30-60 lines, overriding verbosity and the Length Targets table. Skip badges, TOC, features, Docker, and otherwise Contributing.
 
 ### Monorepo
 Ask Phase 2a question 4 (it counts toward the cap). A root README adds a "Packages" section with a table of sub-packages.

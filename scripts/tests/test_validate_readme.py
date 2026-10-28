@@ -422,6 +422,36 @@ class LicenseTests(unittest.TestCase):
         self.assertNotIn("License mismatch", groups_for(content, base_dir=self.tmp.name))
 
 
+class ConductContactTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def write(self, rel: str, text: str) -> None:
+        path = os.path.join(self.tmp.name, rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+
+    def test_unfilled_placeholder_flagged(self):
+        self.write(".github/CODE_OF_CONDUCT.md", "enforcement at [INSERT CONTACT METHOD]. All\n")
+        content = "# T\n\nSee the [Code of Conduct](.github/CODE_OF_CONDUCT.md) and [again](.github/CODE_OF_CONDUCT.md).\n"
+        findings = groups_for(content, base_dir=self.tmp.name)["Unfilled Code of Conduct contact"]
+        self.assertEqual(len(findings), 1)
+        self.assertIn("L3", findings[0])
+
+    def test_filled_contact_and_unlinked_file_pass(self):
+        self.write("CODE_OF_CONDUCT.md", "enforcement at [a@b.dev](mailto:a@b.dev). All\n")
+        self.write("docs/CODE_OF_CONDUCT.md", "enforcement at [INSERT CONTACT METHOD]. All\n")
+        content = "# T\n\n[Code of Conduct](CODE_OF_CONDUCT.md)\n"
+        self.assertNotIn("Unfilled Code of Conduct contact", groups_for(content, base_dir=self.tmp.name))
+
+    def test_missing_file_is_a_broken_link_only(self):
+        groups = groups_for("# T\n\n[Code of Conduct](CODE_OF_CONDUCT.md)\n", base_dir=self.tmp.name)
+        self.assertIn("Broken links", groups)
+        self.assertNotIn("Unfilled Code of Conduct contact", groups)
+
+
 class StyleAttrTests(unittest.TestCase):
     def test_flagged(self):
         content = '# T\n\n<img src="a.png" style="filter: invert(1)">\n<p\n  style="color:red">x</p>\n'
