@@ -26,7 +26,7 @@
 ![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS-green)
 ![Version](https://img.shields.io/badge/version-0.1.0--alpha.1-orange)
 
-A personal climbing training tracker for periodized training, rehab, and benchmarks. Offline-first — all data stored locally in SQLite, no account or network required.
+A personal climbing training tracker for periodized training, rehab, and benchmarks. Offline-first, all data stored locally in SQLite. No account or network required.
 
 <p align="center">
   <img src="ganba-screens/dashboard_bento_dark.png" alt="Ganba dashboard showing streak, weekly schedule, pain areas, and benchmark retests" width="220">
@@ -49,17 +49,17 @@ flutter run
 
 ## Features
 
-- **Training Phases** -- Periodized blocks with auto-advancing phases and deload weeks
-- **Session Logging** -- Log climbs with grade, outcome, style, and media attachments
-- **Session Summary** -- Post-session breakdown with climb recap charts, trophy climbs, and style distribution
-- **Drill Timer** -- Foreground-service timer with work/rest intervals and sound cues
-- **Progress Stats** -- Charts for grades, sessions, volume, and personal records
-- **Pain Monitoring** -- Track injury areas with severity ratings and alert thresholds
-- **Goal Setting** -- Goals tied to specific exercises with automatic progress tracking
-- **Benchmarking** -- Record and retest performance benchmarks on a schedule
-- **Training Plan** -- Visual canvas for scheduling sessions into weekly templates
-- **Year in Review** -- Five-slide carousel summarizing your training year
-- **Achievements** -- Unlockable achievements on a collectible wall
+- Periodized training phases with auto-advancing blocks and deload weeks
+- Session logging with grade, outcome, style, and media attachments
+- Post-session summary: climb recap charts, trophy climbs, style distribution
+- Drill timer with foreground-service work/rest intervals and sound cues
+- Progress charts for grades, sessions, volume, and personal records
+- Pain monitoring with severity ratings and alert thresholds
+- Goals tied to specific exercises with automatic progress tracking
+- Benchmark recording and scheduled retesting
+- Visual training plan canvas for weekly session templates
+- Year in review: five-slide carousel summarizing your training year
+- Unlockable achievements on a collectible wall
 
 <details>
 <summary>More screenshots</summary>
