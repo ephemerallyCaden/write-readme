@@ -456,12 +456,14 @@ class RepoFileTests(unittest.TestCase):
                               capture_output=True, text=True, check=False)
 
     def test_repo_readme(self):
+        with open(os.path.join(REPO, "README.md"), encoding="utf-8") as f:
+            install_line = next(i for i, ln in enumerate(f, start=1) if ln.startswith("```bash"))
         for project_type in ["cli", "other"]:
             with self.subTest(project_type=project_type):
                 result = self.run_script("README.md", "--type", project_type, "--dir", ".")
                 self.assertEqual(result.returncode, 0, result.stdout)
                 self.assertTrue(result.stdout.startswith("All checks passed."))
-                self.assertIn("first runnable step: L19", result.stdout)
+                self.assertIn(f"first runnable step: L{install_line} (```bash block)", result.stdout)
 
     def test_ganba_example(self):
         result = self.run_script("examples/ganba-mobile-app.md", "--type", "mobile", "--dir", "examples")
