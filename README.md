@@ -57,6 +57,10 @@ The writing rules are adapted from multiple avoid AI writing skill and applied w
 
 [Generated README for Ganba](examples/ganba-mobile-app.md), a Flutter climbing tracker. write-readme detected it as a Mobile App, found 30 golden test renders in the repo, and used them as the screenshots above.
 
+## Code of Conduct
+
+This project follows the [Contributor Covenant 2.1](CODE_OF_CONDUCT.md).
+
 ## License
 
 MIT
