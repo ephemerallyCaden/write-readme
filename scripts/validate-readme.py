@@ -63,6 +63,8 @@ LENGTH_TARGETS: dict[str, tuple[int, int | None]] = {
     "mobile": (150, 350),
     "docs-site": (60, 200),
     "bot": (140, 400),
+    "dotfiles": (30, 200),
+    "hardware": (100, 400),
     "other": (80, 300),
 }
 # Minimal is an absolute range whatever the type (SKILL.md Phase 3f).
@@ -92,7 +94,8 @@ PLACEHOLDER_PATTERNS: list[re.Pattern[str]] = [
 
 # Run-first: how far down the first runnable step may sit
 RUN_FIRST_MAX_LINE = {"minimal": 50, "standard": 80, "detailed": 80}
-RUN_FIRST_SKIP_TYPES = {"educational"}
+# Run-first exempt types (SKILL.md Phase 3b).
+RUN_FIRST_SKIP_TYPES = {"educational", "dotfiles"}
 
 SHELL_LANGS = {
     "bash", "sh", "shell", "zsh", "fish", "console", "terminal",

@@ -80,6 +80,8 @@ class RunFirstTests(unittest.TestCase):
         content = "# T\n\nNo commands here.\n"
         self.assertIn("Run-first", groups_for(content, "cli"))
         self.assertNotIn("Run-first", groups_for(content, "educational"))
+        self.assertNotIn("Run-first", groups_for(content, "dotfiles"))
+        self.assertIn("Run-first", groups_for(content, "hardware"))
 
 
 class AnchorTests(unittest.TestCase):
@@ -296,6 +298,15 @@ class LengthTests(unittest.TestCase):
         self.assertEqual(self.length(150, "mobile", None), [])
         self.assertIn("minimum of 150", self.length(149, "mobile", "standard")[0])
         self.assertIn("maximum of 500", self.length(501, "cli", "standard")[0])
+
+    def test_dotfiles_and_hardware_are_length_checked(self):
+        self.assertEqual(self.length(30, "dotfiles", "standard"), [])
+        self.assertIn("minimum of 30", self.length(29, "dotfiles", "standard")[0])
+        self.assertIn("maximum of 200", self.length(201, "dotfiles", "standard")[0])
+        self.assertEqual(self.length(100, "hardware", "standard"), [])
+        self.assertIn("minimum of 100", self.length(99, "hardware", "standard")[0])
+        self.assertIn("maximum of 400", self.length(401, "hardware", "standard")[0])
+        self.assertIn("maximum of 520", self.length(521, "hardware", "detailed")[0])
 
     def test_minimal_is_absolute(self):
         self.assertEqual(self.length(30, "ml", "minimal"), [])
