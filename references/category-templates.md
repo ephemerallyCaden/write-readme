@@ -2,6 +2,8 @@
 
 > 15 project types, 45+ repos analyzed. Each template defines section ordering, MUST/SHOULD/COULD priorities, above-the-fold content, ideal length, and unique sections.
 
+> **Ordering override:** SKILL.md Phase 3b's Run-first rule wins over the orderings below. The install/run section is always the first H2 after title, badges, description, hero image, and TOC.
+
 ---
 
 ## Quick Reference: Unique Sections by Category

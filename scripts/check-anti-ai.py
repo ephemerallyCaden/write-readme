@@ -2,8 +2,9 @@
 """Scan a markdown file for AI-generated writing patterns.
 
 Checks for banned words, chatbot artifacts, template phrases, and structural
-anti-patterns from the design vision. Reports each finding with line number,
-offending text, and severity (P0/P1/P2).
+anti-patterns from the design vision (including bold-label feature lists and
+em dash overuse). Reports each finding with line number, offending text, and
+severity (P0/P1/P2).
 
 Exit code 0 if clean, 1 if findings.
 """
@@ -96,6 +97,19 @@ TRANSITION_FLUFF: list[str] = [
     r"^nevertheless\b",
     r"^in addition\b",
 ]
+
+EM_DASH = "\u2014"
+# Prose em dashes allowed per README before flagging (P2)
+MAX_PROSE_EM_DASHES = 2
+# Bold-label list items allowed per list before flagging (P1)
+MAX_BOLD_LABEL_ITEMS = 2
+
+BULLET_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+(.*)$")
+# "**Name** -- desc", "**Name** — desc", "**Name**: desc", "**Name:** desc"
+BOLD_LABEL_RE = re.compile(
+    r"^\*\*([^*]+?)(?::\*\*|\*\*\s*(?:--|\u2014|\u2013|:))\s*\S"
+)
+INLINE_CODE_RE = re.compile(r"(`+).+?\1")
 
 
 def check_line(line: str, lineno: int) -> list[dict]:
@@ -198,19 +212,131 @@ def check_line(line: str, lineno: int) -> list[dict]:
     return findings
 
 
+def strip_html_comments(lines: list[str]) -> list[str]:
+    """Blank out <!-- ... --> spans (which may cross lines), keeping line count."""
+    out: list[str] = []
+    in_comment = False
+    for line in lines:
+        kept = ""
+        rest = line
+        while rest:
+            if in_comment:
+                end = rest.find("-->")
+                if end == -1:
+                    break
+                rest = rest[end + 3:]
+                in_comment = False
+            else:
+                start = rest.find("<!--")
+                if start == -1:
+                    kept += rest
+                    break
+                kept += rest[:start]
+                rest = rest[start + 4:]
+                in_comment = True
+        out.append(kept)
+    return out
+
+
+def check_structure(prose: list[tuple[int, str | None]]) -> list[dict]:
+    """List and em dash checks over prose lines.
+
+    `prose` holds (lineno, text) with HTML comments and inline code removed;
+    text is None for fenced code lines, which leave list state untouched.
+    """
+    findings: list[dict] = []
+    bold_items: list[tuple[int, str, str]] = []
+    prose_dashes: list[tuple[int, str]] = []
+    in_list = False
+    prev_blank = True
+
+    def close_list() -> None:
+        if len(bold_items) > MAX_BOLD_LABEL_ITEMS:
+            for lineno, label, context in bold_items:
+                findings.append({
+                    "line": lineno,
+                    "severity": "P1",
+                    "rule": "bold-label-list",
+                    "text": f"**{label}**",
+                    "context": context,
+                })
+        bold_items.clear()
+
+    for lineno, text in prose:
+        if text is None:
+            continue
+        stripped = text.strip()
+        if not stripped:
+            prev_blank = True
+            continue
+
+        bullet = BULLET_RE.match(text)
+        if bullet:
+            in_list = True
+            m = BOLD_LABEL_RE.match(bullet.group(1))
+            if m:
+                bold_items.append((lineno, m.group(1).strip(), stripped))
+        elif in_list and (text[:1].isspace()
+                          or (not prev_blank and not stripped.startswith("#"))):
+            pass  # indented or lazy continuation of the current item
+        else:
+            if in_list:
+                close_list()
+            in_list = False
+        prev_blank = False
+
+        if EM_DASH not in text:
+            continue
+        if in_list:
+            findings.append({
+                "line": lineno,
+                "severity": "P1",
+                "rule": "em-dash-in-list",
+                "text": EM_DASH,
+                "context": stripped,
+            })
+        else:
+            prose_dashes.extend((lineno, stripped) for _ in range(text.count(EM_DASH)))
+
+    close_list()
+
+    if len(prose_dashes) > MAX_PROSE_EM_DASHES:
+        total = len(prose_dashes)
+        for lineno, context in prose_dashes:
+            findings.append({
+                "line": lineno,
+                "severity": "P2",
+                "rule": "em-dash-overuse",
+                "text": f"{EM_DASH} ({total} in prose, max {MAX_PROSE_EM_DASHES})",
+                "context": context,
+            })
+
+    return findings
+
+
 def check_content(content: str) -> list[dict]:
     all_findings: list[dict] = []
     in_code_block = False
+    lines = content.splitlines()
+    prose: list[tuple[int, str | None]] = []
 
-    for lineno, line in enumerate(content.splitlines(), start=1):
+    for lineno, (line, uncommented) in enumerate(
+        zip(lines, strip_html_comments(lines)), start=1
+    ):
         # Skip code blocks
         if line.strip().startswith("```"):
             in_code_block = not in_code_block
+            prose.append((lineno, None))
             continue
         if in_code_block:
+            prose.append((lineno, None))
             continue
 
         all_findings.extend(check_line(line, lineno))
+        prose.append((lineno, INLINE_CODE_RE.sub("CODE", uncommented)))
+
+    all_findings.extend(check_structure(prose))
+    all_findings.sort(key=lambda f: f["line"])
 
     # Deduplicate: same line + same rule
     seen: set[tuple[int, str]] = set()

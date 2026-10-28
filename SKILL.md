@@ -183,7 +183,11 @@ Pick the template matching the detected type (see Type-to-Template Mapping below
 
 ### 3b. Generate section by section
 
-Follow the template ordering exactly. Apply all anti-AI writing rules during generation (see section below), not as a post-pass.
+Follow the template ordering, with one override:
+
+**Run-first rule.** The first H2 section is always how to get the project running: install + the command that runs, plays, or imports it (heading: "Getting Started", "Quick Start", "Install", or "Local Development" for static sites). Only the title, badges, 1-2 sentence description, hero image, and TOC may come before it. Features, Architecture, Download tables, Model tables, Prerequisites prose, and everything else go after it. For Library / Package the minimal code example may sit inside this first section alongside install. For Educational / Awesome lists (no runnable code) this rule does not apply.
+
+Apply all anti-AI writing rules during generation (see section below), not as a post-pass. The full catalog with replacements and register notes is in `references/anti-ai-rules.md` (relative to this skill's base directory). Read it before writing prose.
 
 ### 3c. Generate badges
 
@@ -241,6 +245,8 @@ Generate only if the README exceeds 150 lines. Format: flat list of H2 headings,
 Check the Length Targets table for the detected type. If over: trim COULD sections. If under: add missing SHOULD sections.
 
 ## Type-to-Template Mapping
+
+These lists set which sections each type gets. Placement of Install / Quick Start / Getting Started is governed by the Run-first rule in Phase 3b, which overrides the order shown here.
 
 **Web Application:**
 Title+Logo, Badges, Nav links, Description, `<!-- screenshot:hero -->`, Features, Demo link, Install (Docker-first), Config, Architecture, Docs, Contributing, Community, Sponsors, License
@@ -314,9 +320,18 @@ Title, Badges, Description, Features, Install, Quick Start, Docs, Contributing, 
 | Go | Has main package? | Use `go run .` |
 
 ### Anti-AI check (mandatory)
-Run P0 + P1 checks from the Anti-AI Writing Rules section below. Every sentence of prose must pass. Fix violations before proceeding.
+1. Self-review every prose sentence against the P0 + P1 checks and the 12 structural rules in the Anti-AI Writing Rules section below.
+2. Then run the scripted check. Write the draft to a temp file (e.g. `/tmp/write-readme-draft/README.md`, never the project root before approval) and run, with `<skill-dir>` being this skill's base directory:
+   ```bash
+   python3 <skill-dir>/scripts/check-anti-ai.py --file /tmp/write-readme-draft/README.md --severity P1   # gate: P0+P1
+   python3 <skill-dir>/scripts/check-anti-ai.py --file /tmp/write-readme-draft/README.md --severity P2   # adds P2 style findings
+   python3 <skill-dir>/scripts/validate-readme.py /tmp/write-readme-draft/README.md --type <type_slug> --verbosity <level> --dir <project-root>
+   ```
+   `--severity` is required: without it the checker reports P0 only.
+3. Fix every P0 and P1 finding and re-run until the `--severity P1` check exits 0. P2 findings and `validate-readme.py` issues: fix, or list them under "Warnings" in the Phase 5 summary with a reason. If `python3` is unavailable, note that in Warnings and rely on step 1.
 
 ### Completeness
+- Run-first rule holds: the first H2 is install/run (Phase 3b)
 - All MUST sections for detected type are present
 - All detected community files are referenced
 - At least one code example for types that need it
@@ -384,7 +399,7 @@ delve, robust, comprehensive, leverage, seamless, cutting-edge, empower, streaml
 | it's worth noting | (cut -- just state the fact) |
 | ecosystem (in prose) | system, community, network |
 
-### 11 structural rules
+### 12 structural rules
 
 1. No emoji in headings. Only exception: emoji directly next to a proper noun brand/mascot.
 2. No throat-clearing. Never open a section by explaining what it covers. The heading does that. Jump to content.
@@ -397,6 +412,7 @@ delve, robust, comprehensive, leverage, seamless, cutting-edge, empower, streaml
 9. No "In today's world of..." -- ever. No temporal scene-setting.
 10. End on concrete points, not summaries. No "Overall, this tool provides..." endings.
 11. Every prose sentence must pass the portability test (see below).
+12. Feature lists: no bold labels, no em dashes. Write plain bullets that start with the feature name followed by a colon or just flow into the description naturally. Do not repeat the same `**Name** -- description` pattern on every line.
 
 ### Voice register
 
@@ -443,7 +459,7 @@ When the user chooses "enhance" for an existing README:
 - **Human-authored** (preserve verbatim): project-specific prose >3 sentences, personal voice or opinions, content not inferable from codebase (philosophy, roadmap, acknowledgments, comparison with alternatives), custom sections not in any template.
 - **Mixed** (preserve human content, supplement): features section with some human items -- keep them, add newly detected features below. Usage with human examples -- keep them, add auto-inferred examples only for different functionality.
 
-**Step 3: Add missing sections.** Check which MUST sections for the detected type are absent. Insert at canonical position. Match surrounding style.
+**Step 3: Add missing sections.** Check which MUST sections for the detected type are absent. Insert at canonical position. Match surrounding style. Apply the Run-first rule: if install/run instructions exist but sit below Features or other content, move that section (content preserved verbatim) to be the first H2 and report it as MOVED in Step 5.
 
 **Step 4: Update auto-generatable sections.** Regenerate badges, TOC, license text from current data.
 
@@ -453,6 +469,7 @@ Enhanced README for [name]:
   PRESERVED: Description, Features (5 items), Philosophy, Acknowledgments
   REGENERATED: Badges (added CI badge), TOC, License
   ADDED: Installation (was missing), Quick Start (was missing)
+  MOVED: Getting Started (to first section, Run-first rule)
   UNCHANGED: 4 other sections
 ```
 Write after user confirms.

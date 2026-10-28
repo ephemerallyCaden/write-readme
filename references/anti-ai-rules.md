@@ -119,8 +119,8 @@ READMEs operate in a `docs` register, not `blog` or `linkedin`. This relaxes som
 - Passive voice in feature descriptions ("Designed for...", "Built with...")
 
 **Use with care (docs profile relaxes these):**
-- Em dashes (0-2 per README, not as a rhythm crutch)
-- Bold keywords (each bold bullet must contain a verb and a specific claim)
+- Em dashes: 0-2 per README max. Never use em dashes in feature lists. Use a colon or just start the sentence after the feature name.
+- Bold keywords in feature lists: do NOT bold the feature name. Plain text bullets read more naturally. If a feature list has 5+ items, every line being bold creates a wall of emphasis that scans as AI-generated.
 - Hedging with "may" (acceptable for genuine technical uncertainty)
 
 **Always strict (docs profile keeps these):**
