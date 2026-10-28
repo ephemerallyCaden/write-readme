@@ -8,9 +8,12 @@ seeded random mixes (about 275 trees, around 30 s):
 
     DETECT_DIFFERENTIAL=full python3 -m unittest test_detect_project_type_differential
 
-REFERENCE is the last commit with the original script. When detection is
-changed on purpose, this test will fail. Move REFERENCE to the new
-behavior's commit, or delete this test once the rewrite has settled.
+REFERENCE is the last commit with the original script. The Unity and Unreal
+signals added after it change output on purpose, so these fixtures contain
+no engine files (test_detect_project_type.py covers those). Any other
+intended detection change that these fixtures reach will fail this test:
+move REFERENCE to that commit, or delete this test once the rewrite has
+settled.
 
 Run: python3 -m unittest discover -s scripts/tests -v
 """

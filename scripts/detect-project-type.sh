@@ -187,6 +187,15 @@ scan_sources
 
 # --- Priority 3: Game / Interactive ---
 if has_file "project.godot"; then echo "game"; exit 0; fi
+# Unity projects have ProjectSettings/ and scenes under Assets/; Unreal has a
+# .uproject. Editor tooling packages also use UnityEngine but have no
+# Assets/, so the import only counts inside a project.
+if has_file "ProjectSettings/ProjectVersion.txt"; then echo "game"; exit 0; fi
+if has_dir "Assets" && find Assets "${PRUNE[@]}" -name '*.unity' -print -quit 2>/dev/null | grep -q .; then
+    echo "game"; exit 0
+fi
+if find_any 2 -name '*.uproject'; then echo "game"; exit 0; fi
+if has_dir "Assets" && has_pattern 'using\s+UnityEngine'; then echo "game"; exit 0; fi
 if has_pattern 'import\s+pygame|from\s+pygame|import\s+arcade|from\s+arcade'; then echo "game"; exit 0; fi
 if has_pattern 'import\s+raylib|from\s+raylib|use\s+bevy|bevy::prelude'; then echo "game"; exit 0; fi
 if has_pattern 'require.*love|love\.(graphics|physics|window)'; then echo "game"; exit 0; fi

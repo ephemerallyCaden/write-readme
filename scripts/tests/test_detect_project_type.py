@@ -156,6 +156,41 @@ class DetectProjectTypeTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("console_scripts", result.stderr)
 
+    # Split so this file doesn't contain the C# import the detector greps for.
+    UNITY_CS = "using " + "UnityEngine;\npublic class Mover : MonoBehaviour {}\n"
+
+    def test_unity_project_is_game(self):
+        root = self.make("unity", {"ProjectSettings/ProjectVersion.txt": "m_EditorVersion: 2022.3.10f1\n",
+                                   "Assets/Scenes/Main.unity": "%YAML 1.1\n",
+                                   "Assets/Scripts/Mover.cs": self.UNITY_CS})
+        self.assertEqual(self.detect(root), "game")
+
+    def test_each_unity_signal_alone_is_game(self):
+        cases = {"version": {"ProjectSettings/ProjectVersion.txt": "m_EditorVersion: 2022.3.10f1\n"},
+                 "scene": {"Assets/Levels/Deep/One.unity": "%YAML 1.1\n"},
+                 "script": {"Assets/Scripts/Mover.cs": self.UNITY_CS}}
+        for name, files in cases.items():
+            with self.subTest(signal=name):
+                self.assertEqual(self.detect(self.make(f"unity-{name}", files)), "game")
+
+    def test_unity_editor_package_is_not_game(self):
+        # A UPM tooling package imports UnityEngine but is not a game project.
+        root = self.make("tools", {"package.json": '{"name": "com.example.tools", "unity": "2022.3"}',
+                                   "Editor/ToolWindow.cs": "using UnityEditor;\n" + self.UNITY_CS})
+        self.assertNotEqual(self.detect(root), "game")
+
+    def test_unity_scene_outside_assets_is_not_game(self):
+        self.assertNotEqual(self.detect(self.make("docs", {"samples/Demo.unity": ""})), "game")
+
+    def test_godot_project_is_game(self):
+        root = self.make("godot", {"project.godot": "config_version=5\n", "player.gd": "extends Node2D\n"})
+        self.assertEqual(self.detect(root), "game")
+
+    def test_unreal_project_is_game(self):
+        root = self.make("unreal", {"MyGame.uproject": '{"EngineAssociation": "5.3"}\n',
+                                    "Source/MyGame/MyGame.cpp": "#include \"MyGame.h\"\n"})
+        self.assertEqual(self.detect(root), "game")
+
     def test_home_assistant_config(self):
         root = self.make("ha", {"configuration.yaml": "homeassistant:\n  name: Home\n"})
         self.assertEqual(self.detect(root), "dotfiles")
