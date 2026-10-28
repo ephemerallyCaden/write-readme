@@ -72,12 +72,12 @@ Check every item. Verify claims against the codebase with Read, Glob, and Grep; 
 - Every MUST section for the type (Type-to-Template Mapping, plus the matrix in `category-templates.md`) is present. Missing MUST is P1. Respect Special Detection: no Contributing for solo or academic projects.
 - Missing SHOULD sections are P2, and only when the codebase supplies their content. Never propose padding to reach a Length Target; over-length fixes name the sections to cut or collapse.
 - One H1, no skipped heading levels, no duplicate or near-duplicate H2s.
-- TOC rule from Phase 3e: a TOC exists above 150 lines, and every TOC entry matches a heading.
+- TOC and navigation rule from Phase 3e: a TOC exists above 150 lines (Educational / Awesome always has a TOC or anchor nav block), and every TOC entry matches a heading.
 - Every fenced code block names a language.
 
 **Visuals**
 - The type's screenshot positions from Phase 3d: a MUST position with no image is P1.
-- Run the Phase 3d image search. Screenshots in the repo that the README never uses are P2, and the fix gives the path and alt text.
+- Run the Phase 1j image search and classification. Screenshots in the repo that the README never uses are P2, and the fix gives the path and alt text.
 - Every image has descriptive alt text, read from the image itself.
 - No positional references ("the screenshot below", "animation above").
 - No `style=` attributes in HTML (GitHub strips them).

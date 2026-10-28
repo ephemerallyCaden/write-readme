@@ -1,23 +1,25 @@
 ---
 name: readme
-description: Generate polished, project-type-aware READMEs from codebase analysis. Use when asked to "generate a readme", "write a readme", "create a readme", or "/readme". Supports minimal/standard/detailed verbosity, 18 project types, anti-AI-slop writing rules, and optional screenshot capture.
+description: Generate polished, project-type-aware READMEs from codebase analysis. Use when asked to "generate a readme", "write a readme", "create a readme", or "/readme". Supports minimal/standard/detailed verbosity, 18 project types, anti-AI-slop writing rules, and optional screenshot capture. Also critiques existing READMEs ("/readme critique", "review/audit/improve my readme") with ranked findings and fixes it applies on request.
 ---
 
 # write-readme
 
 Generate a README.md by analyzing the current codebase, asking 0-3 questions, and producing a project-type-aware document that reads like a human wrote it.
 
-Output: `README.md` at the project root. If one exists, ask whether to enhance or replace.
+Output: `README.md` at the project root. If one exists, ask whether to enhance or replace. Critique mode (below) edits an existing README instead of generating one.
 
 ## Invocation
 
-Trigger phrases: "generate a readme", "write a readme", "create a readme", "/readme", "make a readme"
+Trigger phrases: "generate a readme", "write a readme", "create a readme", "/readme", "make a readme", "critique my readme", "review my readme", "audit my readme", "improve my readme"
 
 Options (natural language or flags):
 - `/readme` -- standard verbosity, auto-detected type
 - `/readme minimal` or "write a short readme" -- essentials only
 - `/readme detailed` or "write a polished readme" -- all sections, comprehensive
 - `/readme --type cli` -- override auto-detected project type
+- `/readme critique [path]` or "critique/review/audit/improve my readme" -- audit an existing README (default `./README.md`) against these same rules and scripts. Reports P0-P2 findings with exact fixes, then applies the ones you pick. Follow `references/critique-mode.md` (relative to this skill's base directory). If no README exists, offer generate mode.
+- Generate mode stays the default. "Enhance" rewrites auto sections in bulk; "critique" only proposes edits and you choose which to apply.
 
 ## Phase 1: ANALYZE
 
