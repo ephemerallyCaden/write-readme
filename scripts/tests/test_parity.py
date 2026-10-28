@@ -95,16 +95,9 @@ class LengthTargetParityTests(unittest.TestCase):
             labels.append(f"{slug} ({slugs[slug]['name']!r}) has no row")
         return values, labels
 
-    def test_skill_table_values_match_type_slugs(self):
-        self.assertEqual(self.table_problems()[0], [])
-
-    # Known drift at the time of writing: "CLI Tool / TUI" and "Other" are not
-    # type-slugs.json names, and Generative AI has no row. The SKILL.md edit
-    # that fixes the labels turns this into an unexpected success, which
-    # fails the run: delete the decorator then.
-    @unittest.expectedFailure
-    def test_skill_table_rows_name_every_slug_once(self):
-        self.assertEqual(self.table_problems()[1], [])
+    def test_skill_table_matches_type_slugs(self):
+        values, labels = self.table_problems()
+        self.assertEqual(values + labels, [])
 
     def test_validator_uses_type_slugs(self):
         slugs = load_slugs()
