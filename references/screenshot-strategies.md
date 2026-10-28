@@ -122,7 +122,7 @@ The "money shot" is the single most important screenshot for a project's README.
 
 *Sandbox / Creative:*
 - Hero frame: an impressive player-created build, not an empty world
-- Requires human effort -- the tool cannot build a creative showcase
+- Requires human effort -- the tool cannot make a creative build for you
 
 **Capture strategies:**
 

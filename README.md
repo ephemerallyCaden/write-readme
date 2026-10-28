@@ -27,9 +27,11 @@ npx skills add ephemerallyCaden/write-readme -g -y
 /readme minimal          # 30-80 lines, essentials only
 /readme detailed         # every section the project type supports
 /readme --type cli       # override the detected project type
+/readme critique         # review an existing README, then apply the fixes you pick
+/readme architecture     # write an ARCHITECTURE.md for contributors
 ```
 
-It asks at most three questions, shows you the full draft, and writes `README.md` only after you approve. If a README already exists, it can enhance it and keep the sections you wrote by hand.
+It asks at most three questions, shows you the full draft, and writes `README.md`, and any screenshots it captured, only after you approve. If a README already exists, it can enhance it and keep the sections you wrote by hand.
 
 ## What it prioritises
 
@@ -43,7 +45,7 @@ It searches the whole project tree for images, including screenshots, test rende
 
 ### It sounds like a person wrote it
 
-The writing rules are adapted from multiple avoid AI writing skill and applied while the draft is written, then checked again before you see it. That means banned words, no section intros that explain what the section covers, and no bold-label feature bullets. Every sentence also has to pass a portability test: if it could appear unchanged in another project's README, it gets rewritten with a fact about yours.
+The writing rules are adapted from several avoid-AI-writing skills and applied while the draft is written, then checked again before you see it. They ban a list of words, section intros that explain what the section covers, and bold-label feature bullets. Every sentence also has to pass a portability test: if it could appear unchanged in another project's README, it gets rewritten with a fact about yours.
 
 ## Example
 
@@ -55,7 +57,7 @@ The writing rules are adapted from multiple avoid AI writing skill and applied w
   <img src="examples/ganba-screens/goals_screen_dark.png" alt="Goals screen tracking weighted pull progress and hangboard benchmarks" width="220">
 </p>
 
-[Generated README for Ganba](examples/ganba-mobile-app.md), a Flutter climbing tracker. write-readme detected it as a Mobile App, found 30 golden test renders in the repo, and used them as the screenshots above.
+[Generated README for Ganba](examples/ganba-mobile-app.md), a Flutter climbing tracker. write-readme detected it as a Mobile App, found 30 golden test renders in the repo, and used three of them for the screenshots in this section.
 
 ## Code of Conduct
 

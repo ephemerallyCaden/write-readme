@@ -9,6 +9,8 @@ from __future__ import annotations
 import argparse
 import sys
 
+from _mdlib import MAX_HEADER_BADGES
+
 
 ECOSYSTEM_VERSION_URLS: dict[str, str] = {
     "npm": "https://img.shields.io/npm/v/{package}",
@@ -95,8 +97,7 @@ def generate_badges(
         url += "?style=flat"
         badges.append(f"![Downloads]({url})")
 
-    # Cap at 6
-    return badges[:6]
+    return badges[:MAX_HEADER_BADGES]
 
 
 def main() -> None:

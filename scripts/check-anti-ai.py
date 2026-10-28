@@ -2,8 +2,9 @@
 """Scan a markdown file for AI-generated writing patterns.
 
 Checks for banned words, chatbot artifacts, template phrases, and structural
-anti-patterns from the design vision (including bold-label feature lists and
-em dash overuse). Reports each finding with line number, offending text, and
+anti-patterns from references/anti-ai-rules.md (including bold-label feature
+lists and em dash overuse). Only rendered prose is scanned: fenced code,
+inline code and HTML comments are ignored. Reports each finding with line number, offending text, and
 severity (P0/P1/P2).
 
 Exit code 0 if clean, 1 if findings.
@@ -13,6 +14,8 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+
+from _mdlib import ATX_HEADING_RE, INLINE_CODE_RE, Line, parse_lines
 
 
 # Tier 1A banned words (P0 — must never appear)
@@ -52,6 +55,36 @@ BANNED_WORDS: list[str] = [
     "ever evolving",
 ]
 
+# Extra forms the suffix rules below do not produce
+EXTRA_FORMS: dict[str, list[str]] = {
+    "utilize": [r"utilis(?:e|es|ed|ing)", r"utili[sz]ations?"],
+    "holistic": [r"holistically"],
+}
+
+
+def banned_word_pattern(word: str) -> re.Pattern[str]:
+    """Match a banned entry and its common inflections (lowercase input).
+
+    Multi-word and hyphenated entries match exactly. Single words get
+    stem + suffix forms: "leverage" -> leverages/leveraged/leveraging,
+    "tapestry" -> tapestries, "harness" -> harnesses, "seamless" ->
+    seamlessly. Suffixes are a closed list, so "elevator" does not match
+    "elevate" and "realmente" does not match "realm".
+    """
+    if " " in word or "-" in word:
+        body = re.escape(word)
+    elif word.endswith("e"):
+        body = re.escape(word[:-1]) + r"(?:e|es|ed|ing|ely)"
+    elif word.endswith("y"):
+        body = re.escape(word[:-1]) + r"(?:y|ies)"
+    else:
+        body = re.escape(word) + r"(?:s|es|ed|ing|ly|ness|ments?)?"
+    alternatives = [body, *EXTRA_FORMS.get(word, [])]
+    return re.compile(r"\b(?:" + "|".join(alternatives) + r")\b")
+
+
+BANNED_WORD_PATTERNS: list[re.Pattern[str]] = [banned_word_pattern(word) for word in BANNED_WORDS]
+
 # Chatbot artifacts (P1)
 CHATBOT_ARTIFACTS: list[str] = [
     r"feel free to",
@@ -76,7 +109,7 @@ TEMPLATE_PHRASES: list[str] = [
     r"in today'?s (?:world|landscape|era|age)",
     r"in an era of",
     r"in the world of",
-    r"serves as a",
+    r"\bserves as (?:a|an|the)\b",
     r"in order to",
     r"it goes without saying",
     r"at the end of the day",
@@ -86,7 +119,29 @@ TEMPLATE_PHRASES: list[str] = [
     r"whether you'?re a .+ or a",
     r"takes it to the next level",
     r"the possibilities are endless",
+    r"\bstep towards?\b",
 ]
+
+# "Let's" opening a line, a list item, a heading or a quote. An apostrophe
+# (straight or curly) is required: "Lets you ..." is ordinary README prose.
+LETS_OPENER_RE = re.compile(
+    r"^\s*(?:(?:[-*+]|\d+[.)]|#{1,6}|>)\s+)*(let['\u2019]s\b(?:\s+\S+)?)",
+    re.IGNORECASE,
+)
+
+# Emoji ranges for headings. U+2B00-2BFF covers star/arrow emoji such as
+# U+2B50; U+231A-23FA covers watch/hourglass/media-control emoji.
+EMOJI_RE = re.compile(
+    r"[\U0001F000-\U0001F2FF"
+    r"\U0001F300-\U0001F9FF"
+    r"\U0001FA00-\U0001FAFF"
+    r"\U00002600-\U000027BF"
+    r"\U00002B00-\U00002BFF"
+    r"\U0000231A-\U0000231B"
+    r"\U000023E9-\U000023FA"
+    r"\U0000FE00-\U0000FE0F"
+    r"\U0000200D]"
+)
 
 # Transition fluff (P2)
 TRANSITION_FLUFF: list[str] = [
@@ -105,150 +160,98 @@ MAX_PROSE_EM_DASHES = 2
 MAX_BOLD_LABEL_ITEMS = 2
 
 BULLET_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+(.*)$")
-# "**Name** -- desc", "**Name** — desc", "**Name**: desc", "**Name:** desc"
+# "**Name** -- desc", "**Name** — desc", "**Name** - desc", "**Name**: desc",
+# "**Name:** desc". A single hyphen needs spaces around it ("**x**-ish" is not a label).
 BOLD_LABEL_RE = re.compile(
-    r"^\*\*([^*]+?)(?::\*\*|\*\*\s*(?:--|\u2014|\u2013|:))\s*\S"
+    r"^\*\*([^*]+?)(?::\*\*|\*\*(?:\s*(?:--|\u2014|\u2013|:)|\s+-\s))\s*\S"
 )
-INLINE_CODE_RE = re.compile(r"(`+).+?\1")
+# Lists under these headings (and their subheadings) are reference lists, so
+# rule 12 does not apply. A heading that also says "feature" is not exempt.
+FEATURE_HEADING_RE = re.compile(r"\bfeatures?\b", re.IGNORECASE)
+REFERENCE_HEADING_RE = re.compile(
+    r"\b(?:structure|files?|layout|config|configuration|options?|flags?|api|"
+    r"reference|languages?|environment)\b",
+    re.IGNORECASE,
+)
 
 
-def check_line(line: str, lineno: int) -> list[dict]:
+def is_reference_label(label: str) -> bool:
+    """Inline code or a file/path token (`train.py`, src/app) names a thing, not a feature."""
+    label = label.strip()
+    if re.fullmatch(r"(`+).+\1", label):
+        return True
+    return not re.search(r"\s", label) and ("/" in label or bool(re.search(r"\.\w", label)))
+
+
+def check_line(line: str, lineno: int, context: str) -> list[dict]:
+    """Line-level rules. Pass rendered prose (Line.prose): HTML comments and
+    inline code removed. `context` is the raw line shown in findings."""
     findings: list[dict] = []
     lower = line.lower()
+    context = context.strip()
+
+    def add(severity: str, rule: str, text: str) -> None:
+        findings.append({"line": lineno, "severity": severity, "rule": rule,
+                         "text": text, "context": context})
 
     # P0: Banned words
-    for word in BANNED_WORDS:
-        pattern = r"\b" + re.escape(word) + r"\b"
-        m = re.search(pattern, lower)
+    for pattern in BANNED_WORD_PATTERNS:
+        m = pattern.search(lower)
         if m:
-            findings.append({
-                "line": lineno,
-                "severity": "P0",
-                "rule": "banned-word",
-                "text": m.group(),
-                "context": line.strip(),
-            })
+            add("P0", "banned-word", m.group())
 
-    # P1: Chatbot artifacts
-    for pattern in CHATBOT_ARTIFACTS:
-        m = re.search(pattern, lower)
-        if m:
-            findings.append({
-                "line": lineno,
-                "severity": "P1",
-                "rule": "chatbot-artifact",
-                "text": m.group(),
-                "context": line.strip(),
-            })
-
-    # P1: Template phrases
-    for pattern in TEMPLATE_PHRASES:
-        m = re.search(pattern, lower)
-        if m:
-            findings.append({
-                "line": lineno,
-                "severity": "P1",
-                "rule": "template-phrase",
-                "text": m.group(),
-                "context": line.strip(),
-            })
+    # P1: Chatbot artifacts and template phrases
+    for rule, patterns in (("chatbot-artifact", CHATBOT_ARTIFACTS),
+                           ("template-phrase", TEMPLATE_PHRASES)):
+        for pattern in patterns:
+            m = re.search(pattern, lower)
+            if m:
+                add("P1", rule, m.group())
 
     # P1: "Let's" openers
-    if re.match(r"^\s*let'?s\s", lower):
-        findings.append({
-            "line": lineno,
-            "severity": "P1",
-            "rule": "lets-opener",
-            "text": line.strip().split()[0:2],
-            "context": line.strip(),
-        })
+    m = LETS_OPENER_RE.match(line)
+    if m:
+        add("P1", "lets-opener", m.group(1))
 
     # P1: Emoji in headings
-    if re.match(r"^\s*#{1,6}\s", line):
-        # Check for emoji (common Unicode ranges)
-        emoji_pattern = (
-            r"[\U0001F300-\U0001F9FF"
-            r"\U00002702-\U000027B0"
-            r"\U0000FE00-\U0000FE0F"
-            r"\U0001FA00-\U0001FA6F"
-            r"\U0001FA70-\U0001FAFF"
-            r"\U00002600-\U000026FF"
-            r"\U0000200D"
-            r"\U00002764]"
-        )
-        if re.search(emoji_pattern, line):
-            findings.append({
-                "line": lineno,
-                "severity": "P1",
-                "rule": "emoji-in-heading",
-                "text": line.strip(),
-                "context": line.strip(),
-            })
+    if re.match(r"^\s*#{1,6}\s", line) and EMOJI_RE.search(line):
+        add("P1", "emoji-in-heading", line.strip())
 
     # P2: Section preambles (heading followed by "This section explains/covers/describes...")
     if re.match(r"^\s*this\s+section\s+(explains?|covers?|describes?|provides?|contains?|outlines?)",
                 lower):
-        findings.append({
-            "line": lineno,
-            "severity": "P2",
-            "rule": "section-preamble",
-            "text": line.strip(),
-            "context": line.strip(),
-        })
+        add("P2", "section-preamble", line.strip())
 
     # P2: Transition fluff at start of line
     stripped = line.strip().lower()
     for pattern in TRANSITION_FLUFF:
         if re.match(pattern, stripped):
-            findings.append({
-                "line": lineno,
-                "severity": "P2",
-                "rule": "transition-fluff",
-                "text": stripped.split()[0],
-                "context": line.strip(),
-            })
+            add("P2", "transition-fluff", stripped.split()[0])
             break
 
     return findings
 
 
-def strip_html_comments(lines: list[str]) -> list[str]:
-    """Blank out <!-- ... --> spans (which may cross lines), keeping line count."""
-    out: list[str] = []
-    in_comment = False
-    for line in lines:
-        kept = ""
-        rest = line
-        while rest:
-            if in_comment:
-                end = rest.find("-->")
-                if end == -1:
-                    break
-                rest = rest[end + 3:]
-                in_comment = False
-            else:
-                start = rest.find("<!--")
-                if start == -1:
-                    kept += rest
-                    break
-                kept += rest[:start]
-                rest = rest[start + 4:]
-                in_comment = True
-        out.append(kept)
-    return out
+def is_reference_heading(title: str) -> bool:
+    return bool(REFERENCE_HEADING_RE.search(title)) and not FEATURE_HEADING_RE.search(title)
 
 
-def check_structure(prose: list[tuple[int, str | None]]) -> list[dict]:
-    """List and em dash checks over prose lines.
+def check_structure(lines: list[Line]) -> list[dict]:
+    """List and em dash checks over prose lines (HTML comments removed).
 
-    `prose` holds (lineno, text) with HTML comments and inline code removed;
-    text is None for fenced code lines, which leave list state untouched.
+    Fenced code lines are skipped and leave list state untouched.
+
+    Bold-label items are exempt from rule 12 when the label is inline code or
+    a file/path token, or when the list sits in a reference section
+    (Structure, Files, Configuration, Options, API, ...), subsections included.
     """
     findings: list[dict] = []
     bold_items: list[tuple[int, str, str]] = []
     prose_dashes: list[tuple[int, str]] = []
     in_list = False
     prev_blank = True
+    # Level of the reference heading whose section we are in, if any
+    reference_level: int | None = None
 
     def close_list() -> None:
         if len(bold_items) > MAX_BOLD_LABEL_ITEMS:
@@ -262,20 +265,28 @@ def check_structure(prose: list[tuple[int, str | None]]) -> list[dict]:
                 })
         bold_items.clear()
 
-    for lineno, text in prose:
-        if text is None:
+    for line in lines:
+        if line.in_code:
             continue
+        lineno, raw = line.lineno, line.text
+        text = INLINE_CODE_RE.sub("CODE", raw)
         stripped = text.strip()
         if not stripped:
             prev_blank = True
             continue
 
-        bullet = BULLET_RE.match(text)
+        heading = ATX_HEADING_RE.match(text)
+        if heading:
+            level = len(heading.group(1))
+            if reference_level is None or level <= reference_level:
+                reference_level = level if is_reference_heading(heading.group(2)) else None
+
+        bullet = BULLET_RE.match(raw)
         if bullet:
             in_list = True
             m = BOLD_LABEL_RE.match(bullet.group(1))
-            if m:
-                bold_items.append((lineno, m.group(1).strip(), stripped))
+            if m and reference_level is None and not is_reference_label(m.group(1)):
+                bold_items.append((lineno, m.group(1).strip(), raw.strip()))
         elif in_list and (text[:1].isspace()
                           or (not prev_blank and not stripped.startswith("#"))):
             pass  # indented or lazy continuation of the current item
@@ -316,33 +327,18 @@ def check_structure(prose: list[tuple[int, str | None]]) -> list[dict]:
 
 def check_content(content: str) -> list[dict]:
     all_findings: list[dict] = []
-    in_code_block = False
-    lines = content.splitlines()
-    prose: list[tuple[int, str | None]] = []
-
-    for lineno, (line, uncommented) in enumerate(
-        zip(lines, strip_html_comments(lines)), start=1
-    ):
-        # Skip code blocks
-        if line.strip().startswith("```"):
-            in_code_block = not in_code_block
-            prose.append((lineno, None))
-            continue
-        if in_code_block:
-            prose.append((lineno, None))
-            continue
-
-        all_findings.extend(check_line(line, lineno))
-        prose.append((lineno, INLINE_CODE_RE.sub("CODE", uncommented)))
-
-    all_findings.extend(check_structure(prose))
+    lines = parse_lines(content)
+    for line in lines:
+        if not line.in_code and line.prose.strip():
+            all_findings.extend(check_line(line.prose, line.lineno, line.raw))
+    all_findings.extend(check_structure(lines))
     all_findings.sort(key=lambda f: f["line"])
 
     # Deduplicate: same line + same rule
     seen: set[tuple[int, str]] = set()
     unique: list[dict] = []
     for f in all_findings:
-        key = (f["line"], f["rule"], str(f["text"]))
+        key = (f["line"], f["rule"], f["text"])
         if key not in seen:
             seen.add(key)
             unique.append(f)
@@ -367,12 +363,12 @@ def main() -> None:
         "--severity",
         default="P0",
         choices=["P0", "P1", "P2"],
-        help="Minimum severity to report (default: P0 = all severities)",
+        help="Severity threshold: report this level and anything more severe. "
+             "P0 = P0 only, P1 = P0+P1, P2 = all (default: P0)",
     )
     args = parser.parse_args()
 
     severity_order = {"P0": 0, "P1": 1, "P2": 2}
-    min_severity = severity_order[args.severity]
 
     if args.file:
         try:
@@ -388,10 +384,7 @@ def main() -> None:
 
     findings = check_content(content)
 
-    # Filter by severity
-    findings = [f for f in findings if severity_order[f["severity"]] <= min_severity + 2]
-    # Actually: filter so we only show findings at min_severity or more severe
-    # P0 is most severe. If --severity P1, show P0 and P1. If P2, show all.
+    # P0 is most severe. --severity P1 shows P0 and P1; P2 shows all.
     max_shown = severity_order[args.severity]
     findings = [f for f in findings if severity_order[f["severity"]] <= max_shown]
 

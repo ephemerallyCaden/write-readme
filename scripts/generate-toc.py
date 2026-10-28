@@ -2,84 +2,40 @@
 """Generate a table of contents from a markdown file's headings.
 
 Reads a markdown file, extracts H2 (and optionally H3) headings, and prints
-a GitHub-compatible TOC to stdout. Uses GitHub anchor format: lowercase,
-hyphens, stripped special chars.
+a GitHub-compatible TOC to stdout: a bold `**Contents**` label, a blank line,
+then the list. The label is not a heading, so the TOC never becomes the first
+H2 section. Anchors follow GitHub: lowercase, punctuation
+stripped, each space a hyphen, -1/-2 suffixes for duplicate headings.
 
 Includes H3s only if there are more than 10 H2 headings.
 """
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 
-
-def heading_to_anchor(text: str) -> str:
-    """Convert heading text to GitHub-compatible anchor."""
-    # Strip inline code, bold, italic, links
-    text = re.sub(r'`[^`]+`', lambda m: m.group()[1:-1], text)
-    text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
-    text = re.sub(r'[*_]{1,3}([^*_]+)[*_]{1,3}', r'\1', text)
-
-    anchor = text.lower()
-    # Keep only word chars, hyphens, spaces
-    anchor = re.sub(r'[^\w\s-]', '', anchor)
-    # Replace spaces with hyphens
-    anchor = re.sub(r'\s+', '-', anchor.strip())
-    # Collapse multiple hyphens
-    anchor = re.sub(r'-+', '-', anchor)
-    return anchor
+from _mdlib import TOC_LABEL, collect_headings, parse_lines, unique_slugs
 
 
-def extract_headings(content: str) -> list[tuple[int, str]]:
-    """Extract heading level and text from markdown content.
+def extract_headings(content: str) -> list[tuple[int, str, str]]:
+    """Extract (level, text, anchor) for each Markdown heading outside code.
 
-    Returns list of (level, text) tuples. Skips headings inside code blocks.
+    Anchors carry GitHub's -1, -2 suffixes, counted across every heading in
+    the document (H1 and H4+ included), as GitHub numbers them.
     """
-    headings: list[tuple[int, str]] = []
-    in_code_block = False
-
-    for line in content.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("```"):
-            in_code_block = not in_code_block
-            continue
-        if in_code_block:
-            continue
-
-        m = re.match(r'^(#{1,6})\s+(.+)$', stripped)
-        if m:
-            level = len(m.group(1))
-            text = m.group(2).strip()
-            headings.append((level, text))
-
-    return headings
+    headings = [h for h in collect_headings(parse_lines(content)) if not h.html]
+    anchors = unique_slugs([h.text for h in headings])
+    return [(h.level, h.text.strip(), anchor) for h, anchor in zip(headings, anchors)]
 
 
-def generate_toc(headings: list[tuple[int, str]], include_h3: bool) -> list[str]:
-    """Generate TOC lines from headings."""
-    # Track anchors for deduplication
-    anchor_counts: dict[str, int] = {}
+def generate_toc(headings: list[tuple[int, str, str]], include_h3: bool) -> list[str]:
+    """Generate TOC lines from (level, text, anchor) headings."""
     lines: list[str] = []
-
-    for level, text in headings:
-        # Skip H1 — it is the title
-        if level == 1:
-            continue
-        # Only include H2 and optionally H3
+    for level, text, anchor in headings:
+        # Skip H1 (the title); include H2 and optionally H3
         if level == 2 or (level == 3 and include_h3):
-            anchor = heading_to_anchor(text)
-
-            # Handle duplicate anchors (GitHub appends -1, -2, etc.)
-            if anchor in anchor_counts:
-                anchor_counts[anchor] += 1
-                anchor = f"{anchor}-{anchor_counts[anchor]}"
-            else:
-                anchor_counts[anchor] = 0
-
             indent = "  " * (level - 2)
             lines.append(f"{indent}- [{text}](#{anchor})")
-
     return lines
 
 
@@ -120,7 +76,7 @@ def main() -> None:
         content = sys.stdin.read()
 
     headings = extract_headings(content)
-    h2_count = sum(1 for level, _ in headings if level == 2)
+    h2_count = sum(1 for level, _, _ in headings if level == 2)
 
     if args.no_h3:
         include_h3 = False
@@ -135,7 +91,7 @@ def main() -> None:
         print("<!-- No H2 headings found — TOC not generated -->", file=sys.stderr)
         sys.exit(0)
 
-    print("## Table of Contents")
+    print(TOC_LABEL)
     print()
     for line in toc_lines:
         print(line)
