@@ -2,7 +2,7 @@
 
 > 15 project types, 45+ repos analyzed. Each template defines section ordering, MUST/SHOULD/COULD priorities, above-the-fold content, ideal length, and unique sections.
 
-> **Ordering override:** SKILL.md Phase 3b's Run-first rule wins over the orderings below. The run section is always the first H2; only the title, badges, description (≤2 sentences), hero image, nav row, and TOC come before it. What counts as the run section depends on the type: install + run command for most types, a scaffold command for Frameworks and Docs Sites, a download table or store badges for Desktop, Mobile, and Browser Extension, and a hosted URL or deploy button followed by self-host commands for Web Apps, APIs, and hosted Docs Sites. Prerequisites go inside the run section as its first line. Educational / Awesome lists, personal config / dotfiles repos, and ARCHITECTURE.md are exempt.
+> **Ordering override:** SKILL.md Phase 3b's Run-first rule wins over the orderings below. The run section is always the first H2; only the title, badges, description (≤2 sentences, plus an optional router line), hero image, nav row, and TOC come before it. What counts as the run section depends on the type: install + run command for most types, a scaffold command for Frameworks and Docs Sites, a download table or store badges for Desktop, Mobile, and Browser Extension, and a hosted URL or deploy button followed by self-host commands for Web Apps, APIs, and hosted Docs Sites. Prerequisites go inside the run section as its first line. Educational / Awesome lists, personal config / dotfiles repos, and ARCHITECTURE.md are exempt.
 
 ---
 

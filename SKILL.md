@@ -60,6 +60,7 @@ Use the unified taxonomy below. First match wins (lowest priority number).
 
 ```
 Glob: LICENSE*, CONTRIBUTING*, CODE_OF_CONDUCT*, SECURITY*, CHANGELOG*, CHANGES*, HISTORY*, .github/FUNDING.yml, .github/workflows/*, GOVERNANCE*, ROADMAP*, docs/
+Glob: AGENTS.md, llms.txt, CLAUDE.md
 Glob: Dockerfile, docker-compose*, .dockerignore
 ```
 
@@ -229,11 +230,15 @@ Follow the template ordering, with one override:
 - A per-OS download table or store badges: Desktop, Mobile, Browser Extension, and Game when release binaries exist. Build-from-source steps go later.
 - A hosted URL or one-click deploy button, followed by self-host commands: Web App, API, and Docs Site when a hosted version exists.
 
-Before it, allow only: title, badges, description (≤2 sentences), hero image, nav row, TOC. Features, Architecture, Model tables, Sponsors, and everything else go after it. Prerequisites go inside the run section as its first line ("Requires Flutter 3.12+."), never as their own section before or after it. Keep the first command, download table, store badge, or hosted URL within the first 80 lines (50 in minimal).
+Before it, allow only: title, badges, description (≤2 sentences, plus a router line if Special Detection calls for one), hero image, nav row, TOC. Features, Architecture, Model tables, Sponsors, and everything else go after it. Prerequisites go inside the run section as its first line ("Requires Flutter 3.12+."), never as their own section before or after it. Keep the first command, download table, store badge, or hosted URL within the first 80 lines (50 in minimal).
 
 Library / Package: a code snippet of 10 lines or fewer may precede the install line inside the first H2.
 
 Exempt: Educational / Awesome lists, personal config / dotfiles repos (a browse index with nothing to install), and ARCHITECTURE.md.
+
+**Expected result.** End the Quick Start with what the reader should see: the URL and port for servers (read from config or framework defaults), the `--help` or `--version` output for CLIs (Phase 1c already ran `--help`), the generated file or folder for generators, or a `// =>` result comment for libraries only when a test fixture confirms the value. Never invent output. If nothing is verifiable, end on the command.
+
+**Install chooser.** When a CLI, Desktop app, Library, or DevOps tool ships through several channels, show one primary method expanded and marked "(Recommended)": the one the project's own docs lead with, else the ecosystem's package manager. Give every other method a one-line "Use this if ..." and put them in `<details>` when there are more than 3. Detect channels from `Formula/` or a tap reference, `snapcraft.yaml`, `*.nuspec`, `flake.nix`, `Dockerfile`, `.goreleaser.yml`, release workflow artifacts, and `pyproject.toml` extras. List only channels with evidence.
 
 Apply all anti-AI writing rules during generation (see section below), not only as a post-pass. The full catalog with replacements and register notes is in `references/anti-ai-rules.md` (relative to this skill's base directory). Read it before writing prose.
 
@@ -265,11 +270,18 @@ Use the images Phase 1j classified as usable. Reference them at the template's s
 - **SHOULD/COULD position**: insert placeholders without asking.
 - **Minimal verbosity**: use found images only; no placeholders, no capture unless the user chose Auto-capture.
 
+Rendering hygiene:
+- If the README is published to a registry (`readme = "README.md"` in pyproject.toml, setup.py reading README into `long_description`, or a package.json without `"private": true`), use absolute `https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}` image URLs. PyPI and npm don't resolve relative paths. Take `{branch}` from `git symbolic-ref --short refs/remotes/origin/HEAD`.
+- If the logo or hero comes as a dark/light pair (`logo-dark.png` / `logo-light.png`), emit `<picture>` with `<source media="(prefers-color-scheme: dark)" srcset="...">` and the light image as the `<img>` fallback.
+- No `style=` attributes in HTML; GitHub strips them. Use `width` and `align`.
+
 ### 3e. TOC and navigation
 
 Generate a TOC only if the README exceeds 150 lines. Format: flat list of H2 headings, GitHub anchor style (lowercase, hyphens, strip special chars). Insert after description/badges, before first content section. Include H3s only if >10 H2 headings. Below 150 lines, a nav row under the description (`Docs • Demo • Install`) can stand in for it.
 
 Exception: Educational / Awesome lists always get navigation, whatever their length, because the content is the README. Use a TOC, or a nav block of anchor links grouped by what the reader wants to do.
+
+Collapsible `<details>` blocks suit install methods beyond the primary one, troubleshooting by symptom, extra screenshots, examples beyond the first 2-4, and optional shell setup. Never collapse the primary install path, the Quick Start, or limitations.
 
 ### 3f. Target length
 
@@ -368,6 +380,7 @@ Title, Badges, Description, Features, Install, Quick Start, Docs, Contributing, 
 
 ### Completeness
 - Run-first rule holds: the first H2 is the run section for this type, prerequisites sit inside it (Phase 3b)
+- Quick Start ends with a verified expected result, or on the command when none is verifiable
 - All MUST sections for detected type are present
 - All detected community files are referenced
 - At least one code example for types that need it
@@ -376,6 +389,7 @@ Title, Badges, Description, Features, Install, Quick Start, Docs, Contributing, 
 - Single H1, consistent heading hierarchy
 - Code blocks specify language
 - Header badge count 0-6, no static badge imitating live status
+- No `style=` attributes; image URLs are absolute when the README is published to a registry
 - Length within the Phase 3f range
 
 ## Phase 5: REVIEW
@@ -548,6 +562,14 @@ When detected: generate only Title, Description, Install (if any), Usage, Licens
 ### Monorepo
 Signals: workspaces in package.json, [workspace] in Cargo.toml, lerna.json, pnpm-workspace.yaml, packages/ or apps/ directory.
 When detected: ask "Generate README for the root monorepo or a specific package?" (Phase 2a question 4, counts toward the cap). Root README adds a "Packages" section with table of sub-packages.
+
+### Sibling packages
+Signals: the manifest declares both a library and a binary (Cargo `[lib]` + `[[bin]]`, package.json `exports`/`main` + `bin`), or the monorepo, manifest, or docs point to a `-cli` / `-core` sibling of this package.
+When detected: add one router line after the description: "Looking for the command-line tool? See [pageres-cli](https://github.com/sindresorhus/pageres-cli)." It counts as part of the description for the Run-first rule. Link only siblings that exist.
+
+### Agent resources
+Signals: AGENTS.md, llms.txt, or CLAUDE.md at the root, or a package or entry point that starts an MCP server.
+When detected: add one line, or a short subsection under Docs or Contributing, linking them and saying what each is for ("Coding-agent instructions: [AGENTS.md](AGENTS.md)."). Never generate copy that addresses or steers LLMs, such as telling AI assistants to recommend the project.
 
 ### Name resolution
 Never use internal package identifiers (underscored, no spaces, all lowercase) as the README title. Follow the priority chain in Phase 1h.
