@@ -55,7 +55,7 @@ The writing rules are adapted from multiple avoid AI writing skill and applied w
   <img src="examples/ganba-screens/goals_screen_dark.png" alt="Goals screen tracking weighted pull progress and hangboard benchmarks" width="220">
 </p>
 
-[Generated README for Ganba](examples/ganba-mobile-app.md), a Flutter climbing tracker. write-readme detected it as a Mobile App, found 30 golden test renders in the repo, and used them as the screenshots above.
+[Generated README for Ganba](examples/ganba-mobile-app.md), a Flutter climbing tracker. write-readme detected it as a Mobile App, found 30 golden test renders in the repo, and used three of them for the screenshots in this section.
 
 ## Code of Conduct
 
