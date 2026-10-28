@@ -32,11 +32,20 @@ Options (natural language or flags):
 
 Run all steps silently. No user interaction.
 
+`Glob:` lines are patterns for the Glob tool, and `Grep pattern:` lines are regexes for the Grep tool. Run them with those tools, never by pasting the patterns into a shell: zsh aborts the whole command when one wildcard matches nothing ("no matches found"). Without the Glob tool, run the `find` commands under each Glob block; they quote every pattern and behave the same in bash and zsh. Without the Grep tool, run `grep -rEn --exclude-dir=.git --exclude-dir=node_modules '<pattern>' .` with the pattern in single quotes.
+
 ### 1a. Detect manifests
 
 ```
 Glob: package.json, pyproject.toml, setup.py, setup.cfg, Cargo.toml, go.mod, Gemfile, *.gemspec, pom.xml, build.gradle, build.gradle.kts, CMakeLists.txt, Makefile, mix.exs, pubspec.yaml, composer.json, Package.swift, *.cabal, dune-project, platformio.ini, library.properties, sketch.yaml
 Glob (engine and IDE project files, within 2 levels of the root): ProjectSettings/ProjectVersion.txt, project.godot, *.uproject, *.xcodeproj, *.xcworkspace, settings.gradle, settings.gradle.kts, *.sln, *.csproj, global.json
+```
+
+"Within 2 levels" means at the root or in a directory at most two levels below it: with the Glob tool, run each pattern as `P`, `*/P`, and `*/*/P`. Shell equivalent:
+```bash
+find . -maxdepth 1 -type f \( -name package.json -o -name pyproject.toml -o -name setup.py -o -name setup.cfg -o -name Cargo.toml -o -name go.mod -o -name Gemfile -o -name '*.gemspec' -o -name pom.xml -o -name build.gradle -o -name build.gradle.kts -o -name CMakeLists.txt -o -name Makefile -o -name mix.exs -o -name pubspec.yaml -o -name composer.json -o -name Package.swift -o -name '*.cabal' -o -name dune-project -o -name platformio.ini -o -name library.properties -o -name sketch.yaml \)
+find . -maxdepth 3 -not -path '*/.git/*' -not -path '*/node_modules/*' \( -name project.godot -o -name '*.uproject' -o -name '*.xcodeproj' -o -name '*.xcworkspace' -o -name settings.gradle -o -name settings.gradle.kts -o -name '*.sln' -o -name '*.csproj' -o -name global.json \)
+find . -maxdepth 4 -not -path '*/.git/*' -not -path '*/node_modules/*' -path '*/ProjectSettings/ProjectVersion.txt'
 ```
 
 Read each found manifest. Extract: name, version, description, license, dependencies, scripts, entry points, engine/runtime requirements. `python3 <skill-dir>/scripts/extract-metadata.py --dir <project-root>` prints those fields as JSON for the first manifest it recognises; use it as a starting point, and still read every manifest yourself, since it parses only one. It does not parse the engine and IDE project files (it prints nulls for a Unity project), so read those yourself.
@@ -90,6 +99,12 @@ Use the unified taxonomy below. First match wins (lowest priority number). Perso
 Glob: LICENSE*, CONTRIBUTING*, CODE_OF_CONDUCT*, SECURITY*, CHANGELOG*, CHANGES*, HISTORY*, .github/FUNDING.yml, .github/workflows/*, GOVERNANCE*, ROADMAP*, ARCHITECTURE*, docs/
 Glob: AGENTS.md, llms.txt, CLAUDE.md
 Glob: Dockerfile, docker-compose*, .dockerignore
+```
+
+Shell equivalent of the three Glob lines:
+```bash
+find . -maxdepth 1 \( -name 'LICENSE*' -o -name 'CONTRIBUTING*' -o -name 'CODE_OF_CONDUCT*' -o -name 'SECURITY*' -o -name 'CHANGELOG*' -o -name 'CHANGES*' -o -name 'HISTORY*' -o -name 'GOVERNANCE*' -o -name 'ROADMAP*' -o -name 'ARCHITECTURE*' -o -name docs -o -name AGENTS.md -o -name llms.txt -o -name CLAUDE.md -o -name Dockerfile -o -name 'docker-compose*' -o -name .dockerignore \)
+find . -maxdepth 3 \( -path ./.github/FUNDING.yml -o -path './.github/workflows/*' \)
 ```
 
 Grep for env vars:
@@ -225,6 +240,7 @@ Grep pattern (telemetry SDKs): (posthog|@segment/|analytics-node|segment\.io|sen
 Grep pattern (LLM providers): (OPENAI_API_KEY|ANTHROPIC_API_KEY|GEMINI_API_KEY|GOOGLE_API_KEY|MISTRAL_API_KEY|COHERE_API_KEY|GROQ_API_KEY|OPENROUTER_API_KEY|AZURE_OPENAI|api\.openai\.com|api\.anthropic\.com)
 Glob: **/PrivacyInfo.xcprivacy
 ```
+Shell equivalent of the Glob line: `find . -name PrivacyInfo.xcprivacy -not -path '*/.git/*' -not -path '*/node_modules/*' -not -path '*/Pods/*'`.
 
 Also record: version bounds from 1a (`engines`, `requires-python`, `rust-version`, SDK constraints, the `go` directive), `os` / `cpu` fields in package.json, the CI OS matrix (`runs-on`, `matrix.os` in `.github/workflows/*`), and dependencies that exist for one platform only (`pyobjc`, `pywin32`, `[target.'cfg(windows)'.dependencies]`, `sys_platform ==` markers). A telemetry hit counts only where the SDK is initialised in this project's code. Skip the data-flow evidence when sending data is the product (the repo is the analytics SDK or an LLM client library).
 

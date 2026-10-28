@@ -366,7 +366,7 @@ If both color schemes were captured, use the `<picture>` element with `<source m
 
 ### 5c. Validate captures
 
-Every captured image must pass before being used. Check: width >= 400px, pixel diversity > 10 unique colors (catches blank/error pages), file size between 1KB and 10MB. If validation fails, report the issue and do not include the image. A missing screenshot is better than a blank or broken one. Run `python3 ../../scripts/validate-screenshots.py <out>/*.png <out>/*.gif`.
+Every captured image must pass before being used. Check: width >= 400px, pixel diversity > 10 unique colors (catches blank/error pages), file size between 1KB and 10MB. If validation fails, report the issue and do not include the image. A missing screenshot is better than a blank or broken one. Run `find <out> -maxdepth 1 \( -name '*.png' -o -name '*.gif' \) -exec python3 ../../scripts/validate-screenshots.py {} +`; the quoted patterns keep zsh from aborting when there are no GIFs.
 
 ---
 
