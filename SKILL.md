@@ -314,6 +314,14 @@ Before I generate, a few quick choices (press Enter to skip any):
 
 Unanswered choices use defaults. "Go", "just do it", or Enter accepts all defaults.
 
+License: "one exists" means a `LICENSE*`, `LICENCE*`, or `COPYING*` file at the project root. Keep current: the License section names that license and links the file. Skip never removes the section, because License is MUST in every template; it produces this exact one-line section:
+```markdown
+## License
+
+This repository has no license file, so default copyright applies: ask the author before reusing the code.
+```
+If a manifest declares a license but no file exists (`license` in package.json, pyproject.toml, or Cargo.toml), the line names it instead: "MIT, as declared in `package.json`. The repository has no LICENSE file." The Phase 5 summary lists either case under Warnings.
+
 The ARCHITECTURE.md offer is never asked as a separate question. If the user picks Detailed here and the line wasn't shown, note in the Phase 5 summary that ARCHITECTURE.md is available on request (unless the project is Early-stage or one already exists).
 
 ### Verbosity levels
@@ -444,7 +452,7 @@ The Run-first rule in Phase 3b overrides those orderings: wherever the template 
 ### Correctness
 - The H1 title is the Phase 1h title (or the user's Phase 2a question 5 answer). Package names in install commands, imports, and registry links match the manifest name exactly, even when it differs from the title (title `Climb Log`, `pip install climb_log`)
 - Version is current
-- License matches LICENSE file
+- License section matches the LICENSE file, or is the Phase 2b no-license line when there is no file
 - Install command uses correct package name and works
 - All file path references exist (Glob to verify), or are captures and ARCHITECTURE.md that Phase 6 will write
 - Code examples reference real exports (Grep to verify)
@@ -591,7 +599,7 @@ What to do when a Phase 1g signal fires. The signals themselves live only in Pha
 Default Contributing to "Skip", skip community links, and frame the README as a portfolio piece. If the user overrides, generate a lightweight version: "This is a personal project. Fork it, or open an issue with questions."
 
 ### Academic / Coursework
-Default Contributing to "Skip" with an academic integrity note, add "Developed as part of [module] at [university]" if inferable, emphasize architecture and design decisions (after the run section), link to the documentation directory, and default license to "Skip."
+Default Contributing to "Skip" with an academic integrity note, add "Developed as part of [module] at [university]" if inferable, emphasize architecture and design decisions (after the run section), link to the documentation directory, and default License to Skip (the Phase 2b one-line section).
 Research write-up subtype: keep the detected type's template, but a Results section may precede the run section (Phase 3b). Take every number in it from a results file, notebook output, or the paper, and link the paper. Add Citation/BibTeX when a `CITATION.cff` or `.bib` entry exists. One runnable command that reproduces a result is still required; if the repo has none, insert `<!-- TODO: command that reproduces the results -->`.
 
 ### GitHub Pages / Static Site

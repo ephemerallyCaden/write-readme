@@ -11,6 +11,7 @@
 > - SHOULD: include it in standard and detailed when the codebase supplies the content.
 > - COULD: include it in detailed, or in standard only when the content already exists (an existing README section, `docs/`).
 > - Title+Logo, Title+Icon, Title+Avatar: the title is always MUST; the image only when the repo has one (Phase 1j). Docs and API/Docs link rows marked MUST apply only when docs exist (a docs URL in the manifest or repo, or a `docs/` directory). With no logo or docs, leave it out; it is not a missing section.
+> - License is MUST in every template with no condition. When the project has no LICENSE file, the section is the one-line no-license section defined in SKILL.md Phase 2b, and that counts as present.
 > - Screenshot positions are the `<!-- screenshot:... -->` entries in an ordering. Their priority is the screenshot row of the priority table, or the `priority=` value in the placeholder.
 
 ---

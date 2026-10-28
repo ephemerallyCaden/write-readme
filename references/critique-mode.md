@@ -54,7 +54,7 @@ Check every item. Verify claims against the codebase with Read, Glob, and Grep; 
 - Every relative link and image path exists (Glob).
 - Every in-page anchor `](#slug)` matches a heading slug (GitHub style: lowercase, spaces to hyphens, punctuation stripped, duplicate headings get `-1`, `-2`).
 - Code examples: every imported or called name exists in the source (Grep), per Code Example Generation step 4.
-- License text and license badge match the LICENSE file. "All rights reserved" next to an open-source LICENSE is a mismatch.
+- License text and license badge match the LICENSE file. "All rights reserved" next to an open-source LICENSE is a mismatch. With no LICENSE file, the License section must be the Phase 2b no-license section: naming a license that neither a file nor the manifest declares is P0, and a missing License section is the missing-MUST P1 under Structure. The fix for either is that one-line section.
 - Runtime and version claims match the manifest (`engines`, `requires-python`, `rust-version`, SDK constraints, the engine editor version from the Phase 1a engine project files).
 - Env vars and config keys the README names exist in code.
 - A feature bullet is a P0 false claim only after a Grep for its key terms finds nothing.
