@@ -21,7 +21,7 @@ Options (natural language or flags):
 - `/readme detailed` or "write a polished readme" -- every section the type supports
 - `/readme --type cli` -- override auto-detected project type
 - `/readme architecture` or "write an ARCHITECTURE.md" -- write only the ARCHITECTURE.md companion file. Follow `references/architecture-mode.md`.
-- `/readme critique [path]` or "critique/review/audit/improve my readme" -- audit an existing README (default `./README.md`) against these same rules and scripts. Reports P0-P2 findings with exact fixes, then applies the ones you pick. Follow `references/critique-mode.md` (relative to this skill's base directory). If no README exists, offer generate mode.
+- `/readme critique [path]` or "critique/review/audit/improve my readme" -- audit an existing README (default `./README.md`) against these same rules and scripts. Reports P0-P2 findings with exact fixes, then applies the ones you pick. Follow `references/critique-mode.md`. If no README exists, offer generate mode.
 - Generate mode stays the default. "Enhance" rewrites auto sections in bulk; "critique" only proposes edits and you choose which to apply.
 
 ## Phase 1: ANALYZE
@@ -173,7 +173,7 @@ Step 3 -- Look at each shortlisted image and decide if it belongs in a README. N
 - **Diff image / coverage badge / test failure** → skip, test artifact
 - **Design mockup** → use if it represents the actual app, skip if it's a wireframe draft
 
-Only reference images that would help a reader understand what the project does or looks like. When in doubt, skip it. Record which template screenshot positions (MUST/SHOULD/COULD) the usable images cover.
+Only reference images that would help a reader understand what the project does or looks like. When in doubt, skip it. Record which screenshot positions the usable images cover: the `<!-- screenshot:... -->` entries and their MUST/SHOULD/COULD priority in the detected type's entry in `references/category-templates.md` (read it now; Phase 3a uses it again).
 
 ### 1k. Limits and outbound data
 
@@ -262,7 +262,7 @@ The ARCHITECTURE.md offer is never asked as a separate question. If the user pic
 
 ### 3a. Select template
 
-Read the detected type's entry in `references/category-templates.md` (relative to this skill's base directory): its section ordering and its priority table. That table defines MUST, SHOULD, and COULD for the type, and every use of those words in this file means the table's value (see Type-to-Template Mapping below).
+Read the detected type's entry in `references/category-templates.md`: its section ordering and its priority table. That table defines MUST, SHOULD, and COULD for the type, and every use of those words in this file means the table's value, except for the evidence-only sections in Phase 3b (Limitations, Privacy, Comparison), which state their own (see Type-to-Template Mapping below).
 
 ### 3b. Generate section by section
 
@@ -298,7 +298,7 @@ Exempt: Educational / Awesome lists, personal config / dotfiles repos (a browse 
 
 **ARCHITECTURE.md.** When chosen in Phase 2b, follow `references/architecture-mode.md` after the README draft passes Phase 4. That file says where the README links it.
 
-Before writing prose, read `references/anti-ai-rules.md` (relative to this skill's base directory), and apply the Anti-AI Writing Rules section below while writing, not only as a post-pass.
+Before writing prose, read `references/anti-ai-rules.md`, and apply the Anti-AI Writing Rules section below while writing, not only as a post-pass.
 
 ### 3c. Generate badges
 
@@ -498,7 +498,7 @@ When the safety exception applies, the MOVED line becomes, for example:
 ```
   RUN-FIRST: kept below Security model, safety context
 ```
-Then continue in the main flow: write the enhanced draft to `/tmp/write-readme-draft/README.md`, run Phase 4 on it, present it in Phase 5 with this change list in place of the structural summary, and write it in Phase 6. There is no separate write step.
+Then continue in the main flow: write the enhanced draft to `/tmp/write-readme-draft/README.md`, run Phase 4 on it, present it in Phase 5 with this change list alongside the structural summary, and write it in Phase 6. There is no separate write step.
 
 ## Special Detection
 
