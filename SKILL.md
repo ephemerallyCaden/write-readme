@@ -253,10 +253,11 @@ Read the detected type's entry in `references/category-templates.md` (relative t
 Follow the template ordering, with one override:
 
 **Run-first rule.** The first H2 is how to get the project running (heading: "Getting Started", "Quick Start", "Install", "Download", or "Local Development" for static sites). What counts as running depends on the type:
-- Install + the command that runs, plays, or imports it: CLI, TUI, Library, Framework, ML, CV, Bot, DevOps, Game without release binaries, Other.
-- A scaffold or template command that installs and runs in one step (`npm create ...`, `dotnet new ...`, `go run ...@latest`): Framework, Docs Site, project generators.
+- Install + the command that runs, plays, or imports it: CLI, TUI, Library, ML, CV, Gen AI, Bot, DevOps, Game without release binaries, Other.
+- A scaffold or template command that installs and runs in one step (`npm create ...`, `dotnet new ...`, `go run ...@latest`): Framework, Docs Site, project generators. A Framework with no scaffold command uses install + import instead.
 - A per-OS download table or store badges: Desktop, Mobile, Browser Extension, and Game when release binaries exist. Build-from-source steps go later.
 - A hosted URL or one-click deploy button, followed by self-host commands: Web App, API, and Docs Site when a hosted version exists.
+- No release, store, or hosted evidence (Desktop, Mobile, Browser Extension, Web App, API): build-from-source or self-host commands. Never invent a store link, download, or URL.
 - Build and flash the firmware (`pio run -t upload`, `arduino-cli upload`), with the parts list linked from the prerequisites line: Hardware. A board-only repo (no firmware) points to its fabrication outputs (gerbers, BOM, placement files) instead.
 
 Before it, allow only: title, badges, description (≤2 sentences, plus a router line if Special Detection calls for one), hero image, nav row, TOC. Features, Architecture, Model tables, Sponsors, and everything else go after it. Prerequisites go inside the run section as its first line ("Requires Flutter 3.12+."), never as their own section before or after it. Keep the first command, download table, store badge, or hosted URL within the first 80 lines (50 in minimal).
