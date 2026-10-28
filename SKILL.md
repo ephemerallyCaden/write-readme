@@ -151,7 +151,28 @@ If README.md exists, read it. Classify each H2 section as auto-generatable, huma
 
 These are the only detection signals; Special Detection below says what to do when each one fires.
 
-**Solo project:** one contributor (`git shortlog -sn HEAD`), fewer than 5 stars when the count is known, and no CONTRIBUTING.md.
+**Solo project:** one contributor (counted as below), fewer than 5 stars when the count is known, and no CONTRIBUTING.md.
+
+Count contributors with this command from the project root. It reads `git shortlog -sne HEAD` (which applies `.mailmap`), drops bot authors (a name ending in `[bot]`, a `[bot]@` email, `noreply@github.com`), treats entries that share a name or an email (case-insensitive) as one person, and ignores anyone with under 10% of the remaining commits, such as a one-off demo commit. It prints the count; with no git history it prints 1.
+```bash
+python3 - <<'EOF'
+import re, subprocess
+out = subprocess.run(["git", "shortlog", "-sne", "HEAD"], capture_output=True, text=True).stdout
+people = []  # [names, emails, commits]; entries sharing a name or an email are one person
+for count, name, email in re.findall(r"^\s*(\d+)\t(.*?) <(.*)>$", out, re.M):
+    name, email = name.strip().lower(), email.strip().lower()
+    if name.endswith("[bot]") or "[bot]@" in email or email == "noreply@github.com":
+        continue
+    person = [{name}, {email}, int(count)]
+    for p in [p for p in people if p[0] & person[0] or p[1] & person[1]]:
+        person = [person[0] | p[0], person[1] | p[1], person[2] + p[2]]
+        people.remove(p)
+    people.append(person)
+total = sum(p[2] for p in people)
+print(sum(1 for p in people if p[2] * 10 >= total) if total else 1)
+EOF
+```
+
 **Academic:** .university or .edu in manifest groupId/org, assessment brief files (instructions.md, brief.md, assignment.md), course module codes in repo name. Research write-up subtype: a paper or report in the repo (`paper/*.tex`, `report.pdf`, `thesis.pdf`), or an Academic project whose main output is notebooks plus a `results/` or `figures/` directory.
 **GitHub Pages:** CNAME file at root, .nojekyll, raw index.html with no manifest, gh-pages branch.
 **Early-stage:** decided by size and history, measured as below. A missing manifest is not enough on its own.
