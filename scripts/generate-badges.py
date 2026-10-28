@@ -70,7 +70,6 @@ def generate_badges(
 
     # 2. CI badge (if workflow provided)
     if ci_workflow and owner and repo:
-        workflow = ci_workflow.rstrip(".yml").rstrip(".yaml")
         workflow_file = ci_workflow if ci_workflow.endswith((".yml", ".yaml")) else f"{ci_workflow}.yml"
         url = (
             f"https://img.shields.io/github/actions/workflow/status/"
