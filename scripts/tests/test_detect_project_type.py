@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 import unittest
 
-from _load import script_path
+from _load import REPO, script_path
 
 SCRIPT = script_path("detect-project-type.sh")
 
@@ -74,16 +74,17 @@ class DetectProjectTypeTests(unittest.TestCase):
         self.assertEqual(self.detect(root), "cli")
 
     # Dependency and environment directories are not project code (review #15).
+    # Fixture strings are split so this file doesn't match the greps itself.
     LIB = {"package.json": '{"name": "lib", "main": "index.js"}', "index.js": "module.exports = 1;\n"}
 
     def test_node_modules_bot_dependency_ignored(self):
         root = self.make("lib-discord", {**self.LIB,
-                                         "node_modules/dep/index.js": "const d = require('discord.js');\n"})
+                                         "node_modules/dep/index.js": "const d = require('discord" + ".js');\n"})
         self.assertEqual(self.detect(root), "library")
 
     def test_node_modules_hex_string_ignored(self):
         root = self.make("lib-hex", {**self.LIB,
-                                     "node_modules/dep/hash.js": 'import h from "./h"; const k = "a9d3f0";\n'})
+                                     "node_modules/dep/hash.js": 'import h from "./h"; const k = "a9d' + '3f0";\n'})
         self.assertEqual(self.detect(root), "library")
 
     def test_venv_argparse_ignored(self):
@@ -107,6 +108,10 @@ class DetectProjectTypeTests(unittest.TestCase):
         self.assertEqual(self.detect(self.make("tv", {"templates/a.txt": "", "values.yaml": "a: 1\n"})),
                          "devops")
         self.assertEqual(self.detect(self.make("t", {"templates/a.txt": ""})), "other")
+
+    def test_this_repo_is_cli(self):
+        # Guards against test fixtures in this repo matching the detector's greps.
+        self.assertEqual(self.detect(REPO), "cli")
 
     def test_home_assistant_config(self):
         root = self.make("ha", {"configuration.yaml": "homeassistant:\n  name: Home\n"})
