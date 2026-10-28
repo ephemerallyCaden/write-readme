@@ -225,7 +225,7 @@ Pick the template matching the detected type (see Type-to-Template Mapping below
 Follow the template ordering, with one override:
 
 **Run-first rule.** The first H2 is how to get the project running (heading: "Getting Started", "Quick Start", "Install", "Download", or "Local Development" for static sites). What counts as running depends on the type:
-- Install + the command that runs, plays, or imports it: CLI, TUI, Library, Framework, ML, CV, Bot, DevOps, Other.
+- Install + the command that runs, plays, or imports it: CLI, TUI, Library, Framework, ML, CV, Bot, DevOps, Game without release binaries, Other.
 - A scaffold or template command that installs and runs in one step (`npm create ...`, `dotnet new ...`, `go run ...@latest`): Framework, Docs Site, project generators.
 - A per-OS download table or store badges: Desktop, Mobile, Browser Extension, and Game when release binaries exist. Build-from-source steps go later.
 - A hosted URL or one-click deploy button, followed by self-host commands: Web App, API, and Docs Site when a hosted version exists.
@@ -277,7 +277,7 @@ Rendering hygiene:
 
 ### 3e. TOC and navigation
 
-Generate a TOC only if the README exceeds 150 lines. Format: flat list of H2 headings, GitHub anchor style (lowercase, hyphens, strip special chars). Insert after description/badges, before first content section. Include H3s only if >10 H2 headings. Below 150 lines, a nav row under the description (`Docs • Demo • Install`) can stand in for it.
+Generate a TOC only if the README exceeds 150 lines. Format: flat list of H2 headings, GitHub anchor style (lowercase, hyphens, strip special chars). Insert after description/badges, before first content section. Include H3s only if >10 H2 headings. Below 150 lines, a nav row near the top (`Docs • Demo • Install`) can stand in for it.
 
 Exception: Educational / Awesome lists always get navigation, whatever their length, because the content is the README. Use a TOC, or a nav block of anchor links grouped by what the reader wants to do.
 
