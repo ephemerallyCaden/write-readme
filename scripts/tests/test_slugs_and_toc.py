@@ -95,5 +95,29 @@ class BadgeCapTests(unittest.TestCase):
         self.assertLessEqual(len(many), _mdlib.MAX_HEADER_BADGES)
 
 
+class NoBadgesMessageTests(unittest.TestCase):
+    def run_badges(self, *args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run([sys.executable, script_path("generate-badges.py"), *args],
+                              capture_output=True, text=True, check=False)
+
+    def test_owner_and_repo_alone_name_what_is_missing(self):
+        result = self.run_badges("--owner", "X", "--repo", "Y")
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertNotIn("Provide --owner/--repo", result.stderr)
+        self.assertIn("no --license (no LICENSE file)", result.stderr)
+        self.assertIn("no --ci-workflow", result.stderr)
+        self.assertIn("not published to a registry", result.stderr)
+
+    def test_flags_that_need_a_partner(self):
+        missing = badges.missing_inputs(owner=None, repo=None, ecosystem="npm", package=None,
+                                        license_name=None, ci_workflow="ci.yml")
+        self.assertIn("CI: --ci-workflow needs --owner and --repo", missing)
+        self.assertIn("Version/Downloads: --ecosystem needs --package", missing)
+        unknown = badges.missing_inputs(owner="o", repo="r", ecosystem="cpan", package="p",
+                                        license_name=None, ci_workflow=None)
+        self.assertIn("Version/Downloads: unknown --ecosystem 'cpan'", unknown)
+
+
 if __name__ == "__main__":
     unittest.main()

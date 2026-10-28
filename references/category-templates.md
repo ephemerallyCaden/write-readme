@@ -212,7 +212,7 @@ Title+Logo, Badges, `<!-- screenshot:hero | format=gif -->`, Description, Featur
 | Section | Priority | Notes |
 |---|---|---|
 | Title+Logo | MUST | |
-| Badges | SHOULD | Engine projects have no registry: GitHub badges only, plus a static engine badge (Unity 6000.0, Godot 4.3) when you want one |
+| Badges | SHOULD | Engine projects have no registry: GitHub badges only, plus one static engine badge with the Phase 1a engine version (Unity 6000.0, Godot 4.3, Unreal 5.3). Add the engine badge even when there are no live badges (SKILL.md Phase 3c, step 5) |
 | Screenshot/Gameplay GIF | MUST | Gameplay mid-action, not title screen |
 | Description | MUST | Genre, core mechanic, platform |
 | Features | SHOULD | Game features, not technical features |

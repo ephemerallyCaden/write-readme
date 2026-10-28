@@ -338,16 +338,17 @@ Before writing prose, read `references/anti-ai-rules.md`, and apply the Anti-AI 
 
 ### 3c. Generate badges
 
-1. Parse owner/repo from `git remote get-url origin` (`github.com/{owner}/{repo}`). No git remote, or a private repo: skip all shields.io badges.
+1. Parse owner/repo from `git remote get-url origin` (`github.com/{owner}/{repo}`). No git remote, or a private repo: skip steps 2-3, whose live badges query GitHub or a registry. Step 5 still applies.
 2. Detect the registry and take the package name from the manifest: package.json -> `npm` | pyproject.toml/setup.py -> `pypi` | Cargo.toml -> `crates.io` | go.mod -> `go` | Gemfile/gemspec -> `rubygems` | pubspec.yaml -> `pub.dev` | composer.json -> `packagist` | pom.xml/build.gradle -> `maven` | mix.exs -> `hex.pm` | *.cabal -> `hackage` | no match -> GitHub-only badges.
 3. Generate the row (flat style, in the order License, CI, Version, Downloads):
    ```bash
    python3 <skill-dir>/scripts/generate-badges.py --owner <owner> --repo <repo> --license <SPDX id> --ci-workflow <file> --ecosystem <registry> --package <name>
    ```
-   Pass a flag only with real data behind it: `--license` only with a LICENSE file, `--ci-workflow` only for a file that exists in `.github/workflows/`, and `--ecosystem` with `--package` only when the package is published (they add the Version and Downloads badges).
-4. Add a Community badge by hand only when a Discord or Slack link exists. Keep 0-6 badges in total; zero is fine.
+   Pass a flag only with real data behind it: `--license` only with a LICENSE file, `--ci-workflow` only for a file that exists in `.github/workflows/`, and `--ecosystem` with `--package` only when the package is published (they add the Version and Downloads badges). With none of those it prints no badge, and its stderr comment names each missing input; that is a normal result, not an error.
+4. Add a Community badge by hand only when a Discord or Slack link exists.
+5. Add a static badge only when the Badges row of the type's priority table in `references/category-templates.md` names one (today only the Game template's engine badge does), and only for a fact that doesn't change with the build: an engine, language, or platform. Add it whether or not steps 2-4 produced any badge. Build it as `![Unity 6000.0](https://img.shields.io/badge/Unity-6000.0-black?style=flat)`, with the value from Phase 1a. No template entry, no static badge.
 
-Never generate a static badge that imitates live status (`build-passing`, `maintained-yes`, `docs-available`). Static badges are only for facts that don't change with the build, such as language, framework, or platform. In detailed mode, keep at most one CI badge in the header and move per-workflow CI badges into a "Project status" table near the end.
+Keep 0-6 badges in total; zero is fine. Never generate a static badge that imitates live status (`build-passing`, `maintained-yes`, `docs-available`). In detailed mode, keep at most one CI badge in the header and move per-workflow CI badges into a "Project status" table near the end.
 
 ### 3d. Visual assets
 
