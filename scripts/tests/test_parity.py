@@ -40,19 +40,6 @@ def markdown_table(text: str, heading: str) -> list[list[str]]:
     return rows[2:]
 
 
-def split_names(label: str, names: dict[str, str]) -> list[str] | None:
-    """Slugs for a row label that is one type name or several joined by " / "
-    ("CLI Tool / TUI Application"). None if the label is not such a join."""
-    if label in names:
-        return [names[label]]
-    for name, slug in names.items():
-        if label.startswith(name + " / "):
-            rest = split_names(label[len(name) + 3:], names)
-            if rest is not None:
-                return [slug, *rest]
-    return None
-
-
 def parse_range(value: str) -> list[int | None]:
     m = re.fullmatch(r"(\d+)\s*(?:-\s*(\d+)|\+)", value)
     if not m:
@@ -64,34 +51,25 @@ class LengthTargetParityTests(unittest.TestCase):
     """SKILL.md "## Length Targets" == data/type-slugs.json (validate-readme.py's
     LENGTH_TARGETS are checked against the JSON in test_validate_readme.py)."""
 
-    def table_problems(self) -> tuple[list[str], list[str]]:
-        """(value mismatches, label/coverage problems) between the table and the JSON."""
+    def test_skill_table_matches_type_slugs(self):
+        """One row per type-slugs.json entry, labelled with its exact "name"."""
         slugs = vr.load_type_slugs()
         names = {entry["name"]: slug for slug, entry in slugs.items()}
         covered: dict[str, str] = {}
-        values: list[str] = []
-        labels: list[str] = []
+        problems: list[str] = []
         for label, value in (row[:2] for row in markdown_table(read(SKILL_MD), "## Length Targets")):
-            row_slugs = split_names(label, names)
-            if row_slugs is None:
-                # Fall back to the first " / " part so values are still compared.
-                head = label.split(" / ")[0]
-                row_slugs = [s for n, s in names.items() if n.split(" / ")[0] == head]
-                labels.append(f"row {label!r} matches no type-slugs.json name")
-            for slug in row_slugs:
-                if slug in covered:
-                    labels.append(f"{slug} is in rows {covered[slug]!r} and {label!r}")
-                covered[slug] = label
-                if parse_range(value) != slugs[slug]["target_lines"]:
-                    values.append(f"{label!r} says {value}; type-slugs.json {slug} has "
-                                  f"{slugs[slug]['target_lines']}")
-        for slug in sorted(set(slugs) - set(covered)):
-            labels.append(f"{slug} ({slugs[slug]['name']!r}) has no row")
-        return values, labels
-
-    def test_skill_table_matches_type_slugs(self):
-        values, labels = self.table_problems()
-        self.assertEqual(values + labels, [])
+            slug = names.get(label)
+            if slug is None:
+                problems.append(f"row {label!r} is not a type-slugs.json name")
+                continue
+            if slug in covered:
+                problems.append(f"{label!r} has more than one row")
+            covered[slug] = label
+            if parse_range(value) != slugs[slug]["target_lines"]:
+                problems.append(f"{label!r} says {value}; type-slugs.json {slug} has "
+                                f"{slugs[slug]['target_lines']}")
+        problems += [f"{slugs[s]['name']!r} ({s}) has no row" for s in sorted(set(slugs) - set(covered))]
+        self.assertEqual(problems, [])
 
 
 class SlugSetParityTests(unittest.TestCase):
