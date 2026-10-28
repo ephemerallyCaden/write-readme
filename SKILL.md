@@ -33,10 +33,25 @@ Run all steps silently. No user interaction.
 ### 1a. Detect manifests
 
 ```
-Glob: package.json, pyproject.toml, setup.py, setup.cfg, Cargo.toml, go.mod, Gemfile, *.gemspec, pom.xml, build.gradle, build.gradle.kts, CMakeLists.txt, Makefile, mix.exs, pubspec.yaml, composer.json, Package.swift, *.cabal, dune-project, platformio.ini
+Glob: package.json, pyproject.toml, setup.py, setup.cfg, Cargo.toml, go.mod, Gemfile, *.gemspec, pom.xml, build.gradle, build.gradle.kts, CMakeLists.txt, Makefile, mix.exs, pubspec.yaml, composer.json, Package.swift, *.cabal, dune-project, platformio.ini, library.properties, sketch.yaml
+Glob (engine and IDE project files, within 2 levels of the root): ProjectSettings/ProjectVersion.txt, project.godot, *.uproject, *.xcodeproj, *.xcworkspace, settings.gradle, settings.gradle.kts, *.sln, *.csproj, global.json
 ```
 
-Read each found manifest. Extract: name, version, description, license, dependencies, scripts, entry points, engine/runtime requirements. `python3 <skill-dir>/scripts/extract-metadata.py --dir <project-root>` prints those fields as JSON for the first manifest it recognises; use it as a starting point, and still read every manifest yourself, since it parses only one.
+Read each found manifest. Extract: name, version, description, license, dependencies, scripts, entry points, engine/runtime requirements. `python3 <skill-dir>/scripts/extract-metadata.py --dir <project-root>` prints those fields as JSON for the first manifest it recognises; use it as a starting point, and still read every manifest yourself, since it parses only one. It does not parse the engine and IDE project files (it prints nulls for a Unity project), so read those yourself.
+
+Engine and IDE project files are the manifest for projects that have no package manifest. Wherever this file says "manifest" (Phase 1g, Phase 2a, Phase 4), they count. Where each field comes from:
+
+| Project | Files | Name | Version | Engine / runtime |
+|---------|-------|------|---------|------------------|
+| Unity | `ProjectSettings/ProjectVersion.txt`, `ProjectSettings/ProjectSettings.asset`, `Packages/manifest.json` | `productName` in ProjectSettings.asset | `bundleVersion` in ProjectSettings.asset | Editor version from `m_EditorVersion` in ProjectVersion.txt; Unity packages and their versions from the `dependencies` object in `Packages/manifest.json`; start scene: the first `enabled: 1` entry in `ProjectSettings/EditorBuildSettings.asset` |
+| Godot | `project.godot` | `config/name` | `config/version` (Godot 4) | Engine version from `config/features` (`"4.3"`); start scene from `run/main_scene` |
+| Unreal | `*.uproject`, `Config/DefaultGame.ini`, `Config/DefaultEngine.ini` | `ProjectName` in DefaultGame.ini, else the `.uproject` file name | `ProjectVersion` in DefaultGame.ini | Engine version from `EngineAssociation` (`"5.3"`); C++ modules and plugins from `Modules` and `Plugins`; start map from `EditorStartupMap` or `GameDefaultMap` in DefaultEngine.ini |
+| Xcode | `*.xcodeproj/project.pbxproj`, `*.xcworkspace` | Target names, `PRODUCT_NAME` | `MARKETING_VERSION` (`CURRENT_PROJECT_VERSION` is the build number) | `IPHONEOS_DEPLOYMENT_TARGET` / `MACOSX_DEPLOYMENT_TARGET`, `SWIFT_VERSION`; a workspace beside a `Podfile` means `pod install` comes first |
+| Android Gradle | `settings.gradle(.kts)`, the app module's `build.gradle(.kts)`, `gradle/libs.versions.toml` | `rootProject.name`; `include(...)` lists the modules | `versionName` in the app module | `minSdk`, `targetSdk`, `compileSdk` in the app module; Android Gradle Plugin and Kotlin versions from `libs.versions.toml` |
+| .NET | `*.sln`, `*.csproj`, `Directory.Build.props`, `global.json` | `AssemblyName` or `PackageId`, else the `.csproj` file name | `Version` | `TargetFramework` / `TargetFrameworks` (`net8.0`), `OutputType` (`Exe`, `WinExe`, `Library`); SDK pin from `global.json` |
+| Arduino / PlatformIO | `library.properties`, `sketch.yaml`, `platformio.ini` | `name`, else the sketch folder name | `version` in library.properties | `architectures` (library.properties), `fqbn` and core versions per profile (sketch.yaml), `platform`, `board`, and `framework` per `[env:...]` (platformio.ini) |
+
+Unity's `Packages/manifest.json` has only that one top-level field and is not a browser-extension manifest. Unity also writes `*.csproj` and `*.sln` files for the IDE (usually gitignored); when `ProjectSettings/ProjectVersion.txt` exists, treat them as generated, not as a .NET project.
 
 ### 1b. Detect project type
 
@@ -48,7 +63,7 @@ Use the unified taxonomy below. First match wins (lowest priority number). Perso
 |-----|------|-------------------|
 | 1 | Personal config / dotfiles | Repo name contains `dotfiles` and no package manifest; dotfile-manager files (`.chezmoiroot`, `dot_*` entries, dotbot `install.conf.yaml`, `.stow-local-ignore`); Home Assistant `configuration.yaml` with `automations.yaml` or a `homeassistant:` key; or 3+ personal rc files at the root (`.zshrc`, `.bashrc`, `.vimrc`, `.tmux.conf`, `.gitconfig`, dotted or not) and no package manifest |
 | 2 | Hardware / Embedded | Within 2 levels of the root: `platformio.ini`, `*.ino` outside `examples/`, KiCad files (`*.kicad_pro`, `*.kicad_pcb`, `*.kicad_sch`), `BOM.csv` |
-| 3 | Game / Interactive | `project.godot`, pygame/arcade/raylib/bevy/love2d imports, Phaser/PixiJS/Babylon imports, game asset dirs (sprites/, levels/, textures/) |
+| 3 | Game / Interactive | Unity (`ProjectSettings/ProjectVersion.txt`, `*.unity` scenes under `Assets/`), Godot (`project.godot`), Unreal (`*.uproject`), pygame/arcade/raylib/bevy/love2d imports, Phaser/PixiJS/Babylon imports, game asset dirs (sprites/, levels/, textures/) |
 | 4 | Visual Output / CV | cv2/mediapipe/dlib imports + VideoCapture/imwrite/landmark/bounding.box. Also: matplotlib/plotly/d3/chart.js/bokeh/seaborn with data pipeline (Data Viz subtype) |
 | 5 | Generative AI | diffusers/StableDiffusion/comfyui imports. Uses Visual Output template. |
 | 6 | Bot | discord.py/discord.js/telegram/slack-bolt/botfather imports, bot token patterns |
@@ -122,11 +137,29 @@ These are the only detection signals; Special Detection below says what to do wh
 **Solo project:** one contributor (`git shortlog -sn HEAD`), fewer than 5 stars when the count is known, and no CONTRIBUTING.md.
 **Academic:** .university or .edu in manifest groupId/org, assessment brief files (instructions.md, brief.md, assignment.md), course module codes in repo name. Research write-up subtype: a paper or report in the repo (`paper/*.tex`, `report.pdf`, `thesis.pdf`), or an Academic project whose main output is notebooks plus a `results/` or `figures/` directory.
 **GitHub Pages:** CNAME file at root, .nojekyll, raw index.html with no manifest, gh-pages branch.
-**Early-stage:** No manifest OR manifest has <3 fields OR <5 source files. Personal config and Hardware repos rarely have a manifest, so for them only the file count applies (config files, sketches, schematics, and BOMs count).
-**Monorepo:** workspaces in package.json, [workspace] in Cargo.toml, lerna.json, pnpm-workspace.yaml, packages/ or apps/ directory.
+**Early-stage:** decided by size and history, measured as below. A missing manifest is not enough on its own.
+
+Source files are tracked files in a programming, scripting, or shader language, leaving out dependency, build-output, and engine cache directories, Unity's vendored `Assets/Plugins/` and `Assets/TextMesh Pro/`, engine metadata (Unity `.meta`, Godot `.import` and `.uid`), and minified files. The command lists them; measure from the project root with:
+```bash
+{ git ls-files 2>/dev/null || find . -type f -not -path './.git/*'; } \
+  | grep -Ev '(^|/)(node_modules|vendor|third_party|dist|build|target|\.?venv|__pycache__|Pods|\.godot|Intermediate|Saved|DerivedDataCache|Binaries)/|^(\./)?(Library|Temp|Obj|Logs|UserSettings|Assets/Plugins|Assets/TextMesh Pro)/|\.(meta|import|uid)$|\.min\.js$' \
+  | grep -E '\.(py|js|jsx|mjs|cjs|ts|tsx|vue|svelte|go|rs|c|h|cc|cpp|hpp|m|mm|swift|kt|kts|java|scala|cs|fs|gd|shader|cginc|hlsl|glsl|lua|rb|php|ex|exs|hs|ml|dart|zig|ino|sh)$' > /tmp/write-readme-src.txt
+wc -l < /tmp/write-readme-src.txt                                 # source files
+tr '\n' '\0' < /tmp/write-readme-src.txt | xargs -0 cat | wc -l   # source lines
+git rev-list --count HEAD 2>/dev/null                             # commits
+git tag 2>/dev/null | wc -l                                       # tags
+```
+Count GitHub releases too when the release list is known. Then apply, in order:
+1. Fewer than 5 source files: Early-stage.
+2. Otherwise count the maturity signals that hold: 10+ source files; 500+ source lines; 10+ commits; at least one git tag or GitHub release; a Phase 1a manifest (engine and IDE project files included) that gives the project's name and also a version or description. A shallow clone (`git rev-parse --is-shallow-repository` prints `true`) or a directory with no git leaves the two git signals unmet.
+3. Fewer than 2 signals: Early-stage. Two or more: not Early-stage.
+
+Personal config and Hardware repos are judged on file count alone, because their files are mostly not code: config files, sketches, schematics, and BOMs count as source files, step 1 applies, and steps 2 and 3 are skipped.
+
+**Monorepo:** workspaces in package.json, [workspace] in Cargo.toml, lerna.json, pnpm-workspace.yaml, packages/ or apps/ directory (not Unity's `Packages/`, which holds `manifest.json`, its lock file, and any embedded Unity packages).
 **Sibling packages:** the manifest declares both a library and a binary (Cargo `[lib]` + `[[bin]]`, package.json `exports`/`main` + `bin`), or the monorepo, manifest, or docs point to a `-cli` / `-core` sibling of this package.
 **Agent resources:** AGENTS.md, llms.txt, or CLAUDE.md at the root, or a package or entry point that starts an MCP server.
-**Component count:** workspace members (Cargo, npm, or pnpm workspaces, `go.work`), entries under `apps/` and `packages/`, or top-level directories with their own manifest or package marker (`__init__.py`, `mod.rs`, `index.ts`). 3+ shows the ARCHITECTURE.md line in Phase 2b.
+**Component count:** workspace members (Cargo, npm, or pnpm workspaces, `go.work`), entries under `apps/` and `packages/` (not Unity's `Packages/`), or top-level directories with their own manifest or package marker (`__init__.py`, `mod.rs`, `index.ts`). 3+ shows the ARCHITECTURE.md line in Phase 2b.
 
 ### 1h. Name resolution
 
@@ -245,7 +278,7 @@ The ARCHITECTURE.md offer is never asked as a separate question. If the user pic
 - Skips: badges, features, TOC, contributing, community, sponsors, architecture
 - No screenshot placeholders
 - Target: 30-80 lines, whatever the type (overrides the Length Targets table)
-- Triggered by: "minimal", "short", "quick", "simple", "brief", or <5 source files
+- Triggered by: "minimal", "short", "quick", "simple", "brief", or fewer than 5 source files (counted as in Phase 1g)
 
 **standard** (default) -- Balanced README. Most projects.
 - Includes: all MUST sections + SHOULD sections where data is available
@@ -271,14 +304,15 @@ Read the detected type's entry in `references/category-templates.md`: its sectio
 Follow the template ordering, with one override:
 
 **Run-first rule.** The first H2 is how to get the project running (heading: "Getting Started", "Quick Start", "Install", "Download", or "Local Development" for static sites). What counts as running depends on the type:
-- Install + the command that runs, plays, or imports it: CLI, TUI, Library, ML, CV, Gen AI, Bot, DevOps, Game without release binaries, Other.
+- Install + the command that runs, plays, or imports it: CLI, TUI, Library, ML, CV, Gen AI, Bot, DevOps, Game without release binaries that runs from a command (pygame, Bevy, LÖVE), Other.
+- Numbered steps in the engine editor, since no shell command runs the project: Unity, Godot, and Unreal projects without release binaries. The prerequisites line names the editor and the exact version from Phase 1a ("Requires Unity 6000.0.74f1."). Then: open the project (Unity Hub: Add, then pick the folder; Godot Project Manager: Import, then pick `project.godot`; Unreal: open the `.uproject`), open the start scene or map from Phase 1a by path, and press Play (Godot: Run Project, F5). A `git clone` block may come first.
 - A scaffold or template command that installs and runs in one step (`npm create ...`, `dotnet new ...`, `go run ...@latest`): Framework, Docs Site, project generators. A Framework with no scaffold command uses install + import instead.
 - A per-OS download table or store badges: Desktop, Mobile, Browser Extension, and Game when release binaries exist. Build-from-source steps go later.
 - A hosted URL or one-click deploy button, followed by self-host commands: Web App, API, and Docs Site when a hosted version exists.
 - No release, store, or hosted evidence (Desktop, Mobile, Browser Extension, Web App, API): build-from-source or self-host commands. Never invent a store link, download, or URL.
 - Build and flash the firmware (`pio run -t upload`, `arduino-cli upload`), with the parts list linked from the prerequisites line: Hardware. A board-only repo (no firmware) points to its fabrication outputs (gerbers, BOM, placement files) instead.
 
-Before it, allow only: title, badges, description (≤2 sentences, plus a router line if Special Detection calls for one), hero image, nav row, the `**Contents**` TOC (Phase 3e). Features, Architecture, Model tables, Sponsors, and everything else go after it. Prerequisites go inside the run section as its first line ("Requires Flutter 3.12+."), never as their own section before or after it. Keep the first command, download table, store badge, or hosted URL within the first 80 lines (50 in minimal).
+Before it, allow only: title, badges, description (≤2 sentences, plus a router line if Special Detection calls for one), hero image, nav row, the `**Contents**` TOC (Phase 3e). Features, Architecture, Model tables, Sponsors, and everything else go after it. Prerequisites go inside the run section as its first line ("Requires Flutter 3.12+."), never as their own section before or after it. Keep the first command, engine run steps, download table, store badge, or hosted URL within the first 80 lines (50 in minimal).
 
 Library / Package: a code snippet of 10 lines or fewer may precede the install line inside the first H2.
 
@@ -286,7 +320,7 @@ Research write-up (Special Detection): a Results section (the key figure and met
 
 Exempt: Educational / Awesome lists, personal config / dotfiles repos (a browse index with nothing to install), and ARCHITECTURE.md.
 
-**Expected result.** End the Quick Start with what the reader should see: the URL and port for servers (read from config or framework defaults), the `--help` or `--version` output for CLIs (Phase 1c already ran `--help`), the generated file or folder for generators, the serial baud rate and first log line for firmware (from `Serial.begin(...)` and the setup code), or a `// =>` result comment for libraries only when a test fixture confirms the value. Never invent output. If nothing is verifiable, end on the command.
+**Expected result.** End the Quick Start with what the reader should see: the URL and port for servers (read from config or framework defaults), the `--help` or `--version` output for CLIs (Phase 1c already ran `--help`), the generated file or folder for generators, the serial baud rate and first log line for firmware (from `Serial.begin(...)` and the setup code), the screen the start scene opens on for engine projects (from its UI objects and the scripts that run on load), or a `// =>` result comment for libraries only when a test fixture confirms the value. Never invent output. If nothing is verifiable, end on the command.
 
 **Install chooser.** When a CLI, Desktop app, Library, or DevOps tool ships through several channels, show one primary method expanded and marked "(Recommended)": the one the project's own docs lead with, else the ecosystem's package manager. Give every other method a one-line "Use this if ..." and put them in `<details>` when there are more than 3. Detect channels from `Formula/` or a tap reference, `snapcraft.yaml`, `*.nuspec`, `flake.nix`, `Dockerfile`, `.goreleaser.yml`, release workflow artifacts, and `pyproject.toml` extras. List only channels with evidence.
 
@@ -380,6 +414,7 @@ The Run-first rule in Phase 3b overrides those orderings: wherever the template 
 | Rust | Has [[bin]] in Cargo.toml? | Use `cargo run` |
 | Flutter | Has .metadata with project_type: app? | Use `flutter run` not `dart run` |
 | Go | Has main package? | Use `go run .` |
+| Unity / Godot / Unreal | Does the scene or map named in the run steps exist, and does the editor version match `m_EditorVersion` / `config/features` / `EngineAssociation`? | Use the Phase 1a start scene and version |
 
 ### Anti-AI check (mandatory)
 1. Self-review every prose sentence against the 13 structural rules in the Anti-AI Writing Rules section below and the P0/P1 checklist in `references/anti-ai-rules.md`.
@@ -390,7 +425,7 @@ The Run-first rule in Phase 3b overrides those orderings: wherever the template 
    python3 <skill-dir>/scripts/validate-readme.py /tmp/write-readme-draft/README.md --type <type_slug> --verbosity <level> --dir <project-root>
    ```
    The checker runs twice because its exit code counts everything at or above `--severity`: the P1 run's exit code is the gate, and the P2 run only lists warnings. Without `--severity` it reports P0 only.
-   `validate-readme.py` checks relative links and badge URLs, the first runnable step (past line 80 in standard and detailed, 50 in minimal; skipped for educational and dotfiles), dead in-page anchors, duplicate H2s, header badges (at most 6), dead badge hosts and static badges imitating live status, placeholders outside comments and code, positional image references ("screenshot above"), license text against the LICENSE file, `style=` attributes, and the Phase 3f length range. Its first output line always gives the first runnable step's line. Flags:
+   `validate-readme.py` checks relative links and badge URLs, the first runnable step (past line 80 in standard and detailed, 50 in minimal; skipped for educational and dotfiles; with `--type game`, a numbered list in the first H2 that opens a scene or project and presses Play also counts), dead in-page anchors, duplicate H2s, header badges (at most 6), dead badge hosts and static badges imitating live status, placeholders outside comments and code, positional image references ("screenshot above"), license text against the LICENSE file, `style=` attributes, and the Phase 3f length range. Its first output line always gives the first runnable step's line. Flags:
    - `--type` takes a canonical type slug and rejects anything else. `--verbosity` sets the run-first and length limits; add `--early-stage` when Phase 1g flagged an Early-stage project, for the 30-60 range.
    - `--dir` must be the project root, not the `/tmp` draft directory: links and the LICENSE comparison resolve against it.
    - `--expect PATH` (repeatable) names a file Phase 6 will create, so a link to it isn't reported broken. Pass `--expect ARCHITECTURE.md` when the companion file is being generated, and `--expect assets/screenshots/<file>` for each captured image the draft references.

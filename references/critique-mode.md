@@ -32,7 +32,7 @@ Project root is the nearest directory, starting at the README's own and walking 
 1. Read the README with line numbers.
 2. Run every step of Phase 1: ANALYZE against the project root. In 1f, classify each H2 as auto-generatable, human-authored, or mixed using Enhance Mode Step 2. Keep the table: heading, line range, class.
 3. Type: `--type` if given, else the Phase 1b result. Map it to a slug with the canonical type slugs table.
-4. Verbosity: the user's flag if given; else `minimal` when Phase 1g flags Early-stage or the README is under 80 lines with no Features section; else `standard`.
+4. Verbosity: the user's flag if given; else `minimal` when Phase 1g flags Early-stage, or when the README is under 80 lines with no Features section and Phase 1g's source-file or source-line signal is unmet; else `standard`.
 5. Read `references/anti-ai-rules.md` and the type's entry in `references/category-templates.md` (both relative to this skill's base directory).
 
 ## Step 2: Assess
@@ -55,7 +55,7 @@ Check every item. Verify claims against the codebase with Read, Glob, and Grep; 
 - Every in-page anchor `](#slug)` matches a heading slug (GitHub style: lowercase, spaces to hyphens, punctuation stripped, duplicate headings get `-1`, `-2`).
 - Code examples: every imported or called name exists in the source (Grep), per Code Example Generation step 4.
 - License text and license badge match the LICENSE file. "All rights reserved" next to an open-source LICENSE is a mismatch.
-- Runtime and version claims match the manifest (`engines`, `requires-python`, `rust-version`, SDK constraints).
+- Runtime and version claims match the manifest (`engines`, `requires-python`, `rust-version`, SDK constraints, the engine editor version from the Phase 1a engine project files).
 - Env vars and config keys the README names exist in code.
 - A feature bullet is a P0 false claim only after a Grep for its key terms finds nothing.
 - Limitation claims ("not supported on Windows", "Python 3.12 only") match the Phase 1k evidence. A claim the evidence contradicts (CI runs `windows-latest`, `requires-python` allows 3.13) is P0. A claim with no evidence either way goes in Unverified. An uncited limitation whose evidence exists is fine; adding the citation is P2.
@@ -64,7 +64,7 @@ Check every item. Verify claims against the codebase with Read, Glob, and Grep; 
 
 **Getting started**
 - The Run-first rule in Phase 3b holds, including its stated exceptions.
-- Time to first command: note the line of the first runnable command (fenced shell block, download table, or store badge). Past line 80 (line 50 for minimal) is P1.
+- Time to first command: note the line of the first runnable command (fenced shell block, download table, or store badge; for a Unity, Godot, or Unreal project, the numbered editor steps from the Run-first rule). Past line 80 (line 50 for minimal) is P1.
 - Prerequisites name the runtime versions the manifest requires.
 - An expected-result line follows the run command: the URL and port for servers (from config or defaults), `--help` / `--version` for CLIs, the generated files for generators. Missing is P2; the fix uses only codebase facts.
 - Post-install steps the code requires (env vars read at startup, migrations, a config file that must exist) are documented. Missing is P1.

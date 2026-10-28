@@ -212,13 +212,13 @@ Title+Logo, Badges, `<!-- screenshot:hero | format=gif -->`, Description, Featur
 | Section | Priority | Notes |
 |---|---|---|
 | Title+Logo | MUST | |
-| Badges | SHOULD | |
+| Badges | SHOULD | Engine projects have no registry: GitHub badges only, plus a static engine badge (Unity 6000.0, Godot 4.3) when you want one |
 | Screenshot/Gameplay GIF | MUST | Gameplay mid-action, not title screen |
 | Description | MUST | Genre, core mechanic, platform |
 | Features | SHOULD | Game features, not technical features |
 | Download/Play | SHOULD | Pre-built binaries, itch.io, Steam links |
 | How to Play/Controls | SHOULD | Keybindings, controls table |
-| Install from source | SHOULD | For developers who want to build |
+| Install from source | SHOULD | For developers who want to build. With no release binaries it is the run section and comes first (Run-first rule); for Unity, Godot, and Unreal it is the numbered editor steps that rule describes |
 | Modding | COULD | If the game supports mods |
 | Community | SHOULD | Discord for multiplayer games |
 | Contributing | SHOULD | |

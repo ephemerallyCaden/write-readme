@@ -68,8 +68,8 @@ class RelativeLinkTests(unittest.TestCase):
 
 
 class RunFirstTests(unittest.TestCase):
-    def first(self, content: str):
-        return vr.find_first_runnable(vr.parse_lines(content))
+    def first(self, content: str, project_type: str | None = None):
+        return vr.find_first_runnable(vr.parse_lines(content), project_type)
 
     def test_bash_block_line_reported(self):
         self.assertEqual(self.first("# T\n\nIntro.\n\n```bash\nnpm i x\n```\n"), (5, "```bash block"))
@@ -166,6 +166,77 @@ class RunFirstTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as fw:
             open(os.path.join(fw, "Blink.ino"), "w").close()
             self.assertIn("Run-first", groups_for(content, "hardware", base_dir=fw))
+
+
+class EngineRunStepTests(RunFirstTests):
+    """--type game: numbered editor steps in the first H2 count as the run step."""
+
+    UNITY = ("1. In Unity Hub, choose Add and select the cloned `TinySim` folder.\n"
+             "2. Open `Assets/Scenes/WorldCreation.unity` and press Play.\n")
+
+    def first(self, content: str, project_type: str | None = "game"):
+        return super().first(content, project_type)
+
+    def readme(self, steps: str, before: str = "") -> str:
+        return f"# T\n\nA game.\n\n{before}## Getting Started\n\nRequires Unity 6000.0.74f1.\n\n{steps}"
+
+    def test_unity_godot_unreal_steps_count(self):
+        for steps in [
+            self.UNITY,
+            "1. In the Godot Project Manager, choose Import and pick `project.godot`.\n"
+            "2. Press F5 (Run Project).\n",
+            "1. Double-click `Ships.uproject` to open it in Unreal Editor 5.3.\n"
+            "2. Click Play in the toolbar.\n",
+            "1. Open the project in Unity 2022.3, open the `Main` scene, and press Play.\n",
+            "1) Open the project folder in Unity Hub\n2) Load `Scenes/Level1.unity`\n"
+            "3) Hit the ▶ button\n",
+            "1. Open the project in Unity 6, then the `Main` scene, and enter Play mode.\n",
+        ]:
+            with self.subTest(steps=steps):
+                self.assertEqual(self.first(self.readme(steps)), (9, "engine run steps"))
+
+    def test_wrapped_items_and_clone_block_between(self):
+        steps = ("1. In Unity Hub, choose Add and select\n   the cloned folder.\n\n"
+                 "   ```bash\n   git clone https://github.com/o/r.git\n   ```\n\n"
+                 "2. Open the scene\n   `Assets/Scenes/Main.unity` and press\n   Play.\n")
+        # The list starts above the clone block, so it is the first runnable step.
+        self.assertEqual(self.first(self.readme(steps)), (9, "engine run steps"))
+        clone_first = self.readme("```bash\ngit clone x\n```\n\n" + self.UNITY)
+        self.assertEqual(self.first(clone_first), (9, "```bash block"))
+
+    def test_passes_run_first_without_a_shell_block(self):
+        content = self.readme(self.UNITY)
+        self.assertNotIn("Run-first", groups_for(content, "game"))
+        self.assertIn("Run-first", groups_for(content, "cli"))
+        late = self.readme(self.UNITY, before="## Features\n\n" + padding(90))
+        self.assertIn("Run-first", groups_for(late, "game"))
+
+    def test_other_types_ignore_engine_steps(self):
+        content = self.readme(self.UNITY)
+        self.assertIsNone(self.first(content, "desktop"))
+        self.assertIsNone(self.first(content, None))
+
+    def test_steps_that_do_not_open_and_play_do_not_count(self):
+        for steps in [
+            "1. Open the project in Unity Hub.\n2. Build it for Windows.\n",  # no Play
+            "1. Press Play.\n2. Open the `Main` scene.\n",                     # Play before open
+            "1. Install Unity 6000.0.74f1.\n2. Press Play.\n",                 # nothing opened
+            "1. Open the project.\n2. Click Playground in the menu.\n",        # not the Play button
+            "- Open the project in Unity Hub.\n- Open the `Main` scene and press Play.\n",  # bullets
+            "Open the project in Unity Hub, open the `Main` scene and press Play.\n",       # prose
+            "1. Open the project in Unity Hub.\n\nThen open the `Main` scene and press Play.\n",
+        ]:
+            with self.subTest(steps=steps):
+                self.assertIsNone(self.first(self.readme(steps)))
+
+    def test_only_the_first_h2_counts(self):
+        content = "# T\n\n## About\n\nA game.\n\n## Getting Started\n\n" + self.UNITY
+        self.assertIsNone(self.first(content))
+        self.assertIsNone(self.first("# T\n\n" + self.UNITY))  # no H2 at all
+
+    def test_missing_step_message_names_engine_steps(self):
+        issue = groups_for("# T\n\n## Getting Started\n\nSoon.\n", "game")["Run-first"][0]
+        self.assertIn("engine run steps", issue)
 
 
 class AnchorTests(unittest.TestCase):
