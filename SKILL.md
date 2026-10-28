@@ -159,7 +159,7 @@ Unanswered choices use defaults. "Go", "just do it", or Enter accepts all defaul
 - Includes: Title, description (1-2 sentences), install, basic usage (one example), license
 - Skips: badges, features, TOC, contributing, community, sponsors, architecture
 - No screenshot placeholders
-- Target: 30-80 lines
+- Target: 30-80 lines, whatever the type (overrides the Length Targets table)
 - Triggered by: "minimal", "short", "quick", "simple", "brief", or <5 source files
 
 **standard** (default) -- Balanced README. Most projects.
@@ -172,7 +172,7 @@ Unanswered choices use defaults. "Go", "just do it", or Enter accepts all defaul
 **detailed** -- Polished landing page. Open source launches, portfolio pieces.
 - Includes: all MUST + SHOULD + COULD sections
 - Adds: comparison with alternatives, performance notes, detailed config, env vars table, directory tree
-- Target: upper end of ideal length or above
+- Target: upper half of the type's range, up to the stretched detailed bound in Length Targets. Long reference material (full flag tables, header lists) may go in `## Appendix: ...` sections after License.
 - Triggered by: "detailed", "comprehensive", "full", "polished", "landing page", "launch"
 
 ## Phase 3: GENERATE
@@ -209,7 +209,7 @@ Apply all anti-AI writing rules during generation (see section below), not as a 
    composer.json -> Packagist | pom.xml/build.gradle -> Maven Central
    mix.exs -> Hex.pm | *.cabal -> Hackage
    No match -> GitHub-only badges
-3. Select badges (ordered, max 6, flat style):
+3. Select 0-6 badges (ordered, flat style). Zero is fine; skip any badge without real data behind it:
    a. License: ![License](https://img.shields.io/github/license/{owner}/{repo})
    b. CI (if .github/workflows/ exists): ![CI](https://img.shields.io/github/actions/workflow/status/{owner}/{repo}/{workflow_file})
    c. Version (if published): registry-specific shield URL
@@ -217,6 +217,8 @@ Apply all anti-AI writing rules during generation (see section below), not as a 
    e. Community (if Discord/Slack link found): appropriate badge
 4. No git remote or private repo -> skip all shields.io badges
 ```
+
+Never generate a static badge that imitates live status (`build-passing`, `maintained-yes`, `docs-available`). Static badges are only for facts that don't change with the build, such as language, framework, or platform. In detailed mode, keep at most one CI badge in the header and move per-workflow CI badges into a "Project status" table near the end.
 
 ### 3d. Visual assets
 
@@ -252,7 +254,12 @@ Generate only if the README exceeds 150 lines. Format: flat list of H2 headings,
 
 ### 3f. Target length
 
-Check the Length Targets table for the detected type. If over: trim COULD sections. If under: add missing SHOULD sections.
+Pick the range in this order, first match wins:
+1. Early-stage project: 30-60 lines.
+2. Minimal verbosity: 30-80 lines.
+3. Otherwise the Length Targets table for the detected type, with the stretched upper bound in detailed mode.
+
+If over: trim COULD sections first; in detailed mode, move reference material into `## Appendix: ...` sections after License (appendix lines don't count toward the range). If under: add SHOULD sections only when the codebase supplies their content. A short README with real content beats a padded one.
 
 ## Type-to-Template Mapping
 
@@ -349,8 +356,8 @@ Title, Badges, Description, Features, Install, Quick Start, Docs, Contributing, 
 ### Formatting
 - Single H1, consistent heading hierarchy
 - Code blocks specify language
-- Badge count 3-6
-- Length within target range
+- Header badge count 0-6, no static badge imitating live status
+- Length within the Phase 3f range
 
 ## Phase 5: REVIEW
 
@@ -517,7 +524,7 @@ When detected: auto-generate "Live Site" link from CNAME, add GitHub Pages badge
 
 ### Early-stage project
 Signals: no manifest OR manifest <3 fields OR <5 source files.
-When detected: generate only Title, Description, Install (if any), Usage, License. Target 30-60 lines. Skip badges, TOC, features, Docker, Contributing.
+When detected: generate only Title, Description, Install (if any), Usage, License. Target 30-60 lines, overriding verbosity and the Length Targets table. Skip badges, TOC, features, Docker, Contributing.
 
 ### Monorepo
 Signals: workspaces in package.json, [workspace] in Cargo.toml, lerna.json, pnpm-workspace.yaml, packages/ or apps/ directory.
@@ -539,17 +546,19 @@ Never use internal package identifiers (underscored, no spaces, all lowercase) a
 1. Extract owner/repo: `git remote get-url origin` then parse `github.com/{owner}/{repo}`
 2. Detect registry from manifest type (see Phase 3c mapping)
 3. Extract package name from manifest
-4. Select badges (ordered, max 6, flat style): License, CI, Version, Downloads, Community
+4. Select 0-6 badges (ordered, flat style): License, CI, Version, Downloads, Community. No static badges that imitate live status (Phase 3c)
 5. No git remote or private repo: skip shields.io badges entirely
 
 ## Length Targets
 
+Standard-mode ranges. Minimal and early-stage projects use the Phase 3f ranges instead. In detailed mode the upper bound may stretch by 30% (CLI and TUI: up to 1200 lines).
+
 | Type | Target Lines |
 |------|-------------|
-| Web Application | 100-300 |
-| CLI Tool | 200-1200 |
-| Library / Package | 50-400 |
-| Framework | 100-300 |
+| Web Application | 50-300 |
+| CLI Tool / TUI | 60-500 |
+| Library / Package | 40-400 |
+| Framework | 60-300 |
 | Game / Interactive | 100-400 |
 | Visual Output / CV | 150-500 |
 | ML/AI Model | 200-800 |

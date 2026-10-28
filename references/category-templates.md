@@ -30,12 +30,14 @@
 
 ## Ideal Length Summary
 
+Standard-mode ranges. SKILL.md Phase 3f sets the minimal, early-stage, and detailed ranges, which win over this table. Add sections to reach the floor only when the codebase supplies their content.
+
 | Category | Lines | Model |
 |---|---|---|
-| Web Application | 100-300 | Hub-and-spoke |
-| CLI Tool | 200-1200 | README as docs |
-| Library / Package | 50-400 | Hub-and-spoke to comprehensive |
-| Framework | 100-300 | Hub-and-spoke |
+| Web Application | 50-300 | Hub-and-spoke |
+| CLI Tool | 60-500 (detailed: up to 1200) | README as docs |
+| Library / Package | 40-400 | Hub-and-spoke to comprehensive |
+| Framework | 60-300 | Hub-and-spoke |
 | Game / Interactive | 100-400 | Moderate, visual-heavy |
 | Visual Output / CV | 150-500 | Visual + tables |
 | ML/AI Model | 200-800 | Comprehensive |
@@ -55,7 +57,7 @@
 | Section | WebApp | CLI | Lib | Frame | Game | CV | ML | Desktop | DevOps | Edu | BrExt | API | Mobile | Docs | Bot |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Logo/Banner | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | COULD | MUST | MUST | MUST | MUST | MUST |
-| Badges | SHOULD | SHOULD | MUST | MUST | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | MUST | SHOULD | SHOULD | SHOULD |
+| Badges | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD | SHOULD |
 | Screenshot/Demo | MUST | MUST(GIF) | -- | COULD | MUST | MUST | COULD | MUST | -- | -- | SHOULD | -- | MUST | SHOULD | -- |
 | Description | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST | MUST |
 | Features | MUST | SHOULD | SHOULD | SHOULD | SHOULD | MUST | SHOULD | MUST | MUST | -- | MUST | MUST | MUST | SHOULD | MUST |
@@ -99,7 +101,7 @@ Title+Logo, Badges, Nav links, Description, `<!-- screenshot:hero -->`, Features
 | Sponsors | COULD | Tiered sponsor logos |
 | License | MUST | Type + link |
 
-**Ideal length:** 100-300 lines
+**Ideal length:** 50-300 lines
 **Model:** Hub-and-spoke (README is landing page, docs site has depth)
 
 ---
@@ -128,7 +130,7 @@ Title+Logo, Badges, Description, `<!-- screenshot:hero | format=gif -->`, TOC (i
 | Contributing | SHOULD | |
 | License | MUST | |
 
-**Ideal length:** 200-1200 lines
+**Ideal length:** 60-500 lines (detailed: up to 1200)
 **Model:** README as docs (CLI tools often have no docs site)
 
 ---
@@ -143,7 +145,7 @@ Title+Logo, Badges, Description, Code Example (before install, inside the first 
 | Section | Priority | Notes |
 |---|---|---|
 | Title+Logo | MUST | |
-| Badges | MUST | Version, downloads, CI, license |
+| Badges | SHOULD | Version, downloads, CI, license (0-6, only with real data) |
 | Description | MUST | Category-value format |
 | Code Example | MUST | 10 lines or fewer; may precede the install line inside the first H2 to show what using this looks like |
 | Features | SHOULD | Plain bullets, feature name first; a concrete number or named spec in each (no bold labels, rule 12) |
@@ -156,7 +158,7 @@ Title+Logo, Badges, Description, Code Example (before install, inside the first 
 | Contributing | SHOULD | |
 | License | MUST | |
 
-**Ideal length:** 50-400 lines
+**Ideal length:** 40-400 lines
 **Model:** Hub-and-spoke (with docs site) or comprehensive (without)
 
 ---
@@ -171,7 +173,7 @@ Title+Logo, Badges, Tagline, Description, Features/Why, Quick Start (scaffold co
 | Section | Priority | Notes |
 |---|---|---|
 | Title+Logo | MUST | |
-| Badges | MUST | |
+| Badges | SHOULD | 0-6, only with real data |
 | Tagline | SHOULD | Punchy one-liner |
 | Description | MUST | What it does, philosophy |
 | Features/Why | SHOULD | Why this framework over alternatives |
@@ -184,7 +186,7 @@ Title+Logo, Badges, Tagline, Description, Features/Why, Quick Start (scaffold co
 | Contributing | MUST | |
 | License | MUST | |
 
-**Ideal length:** 100-300 lines
+**Ideal length:** 60-300 lines
 **Model:** Hub-and-spoke (framework docs are always external)
 
 ---
@@ -390,7 +392,7 @@ Title+Logo, Badges, Tagline, Quick Start code, Features, Architecture/Request fl
 | Section | Priority | Notes |
 |---|---|---|
 | Title+Logo | MUST | |
-| Badges | MUST | |
+| Badges | SHOULD | 0-6, only with real data |
 | Tagline | SHOULD | |
 | Quick Start code | MUST | curl or SDK example showing a request |
 | Features | MUST | API capabilities |
