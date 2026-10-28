@@ -203,15 +203,19 @@ Personal config and Hardware repos are judged on file count alone, because their
 
 ### 1h. Name resolution
 
-Priority chain for display name:
-1. App display name (AndroidManifest.xml android:label, Info.plist CFBundleDisplayName, MaterialApp title)
-2. Manifest human-readable name (skip if it looks like a code identifier: underscores, no spaces, all lowercase)
-3. Repo name from git remote
-4. Directory name
+The title is the first candidate in this chain that exists and is not skipped:
+1. Display name, the name users see in the running app: AndroidManifest.xml `android:label` (resolved from `strings.xml`), Info.plist `CFBundleDisplayName`, Flutter `MaterialApp(title: ...)`, Unity `productName` in `ProjectSettings/ProjectSettings.asset`, Godot `config/name` in `project.godot`, Unreal `ProjectName` in `Config/DefaultGame.ini`.
+2. Manifest name: `name` in package.json, pyproject.toml, Cargo.toml, and the other Phase 1a manifests, and for project files without a display name the Phase 1a Name column (the `.uproject` file name, `PRODUCT_NAME`, `rootProject.name`, `AssemblyName`).
+3. Repo name from `git remote get-url origin`.
+4. Directory name.
 
-Never use an internal package identifier (underscored, no spaces, all lowercase) as the title.
+Skip a candidate when either holds:
+- It is a code identifier: it contains no spaces, and it also meets at least one of these (any one is enough): it contains `_`, `.`, `/`, or `@` (`climb_log`, `com.example.app`, `@scope/pkg`); it has no uppercase letter (`tinysim`, `climb-log`). `TinySimProject`, `Climb Log`, and `my tool` are not identifiers.
+- It is an engine's default for a new project: Unity `My project` (with or without a ` (N)` suffix) or `New Unity Project`, Godot `New Game Project`, Unreal `MyProject`.
 
-If two human-readable candidates disagree (app label "Ganba" vs manifest name "Climb Log"), that is Phase 2a question 5. Otherwise use the highest-priority candidate.
+If every candidate is skipped, use the first one that exists, exactly as written (`ripgrep`).
+
+Two candidates are the same name when they match after lowercasing and removing spaces, hyphens, and underscores (`Climb Log`, `climb-log`, `climb_log`). Ask Phase 2a question 5 only when candidates 1 and 2 both exist, neither is skipped, and they are not the same name (display name "Ganba" vs manifest name "Climb Log"). A repo or directory name that differs from the title never triggers the question: a Unity `productName` of `TinySimProject` is the title even when the repo is `TinySim`.
 
 ### 1i. Supplementary docs
 
@@ -274,7 +278,7 @@ A required question is one with no safe default. These are the only ones, wherev
 2. "Describe your project in 1-2 sentences -- what does it do and who is it for?" -- SKIP if manifest description >10 words AND no existing README. If cut: infer from manifest and code.
 3. "This looks like both a [type A] and [type B]. Which is its primary identity?" -- only if type detection is ambiguous. If cut: the lower priority number wins.
 4. If monorepo: "Generate README for the root monorepo or a specific package?" If cut: root.
-5. "Should the title be [A] or [B]?" -- only if Phase 1h found two human-readable names that disagree. If cut: the higher candidate in the Phase 1h chain.
+5. "Should the title be [A] or [B]?" -- only if Phase 1h found a display name and a manifest name that differ (its rule says exactly when). If cut: the Phase 1h title.
 
 Hard cap: 3 required questions. After 3, use the "If cut" default for the rest. The optional choices block in 2b does not count toward the cap, because every item in it has a default.
 
@@ -438,7 +442,7 @@ The Run-first rule in Phase 3b overrides those orderings: wherever the template 
 ## Phase 4: VERIFY
 
 ### Correctness
-- Project name matches manifest
+- The H1 title is the Phase 1h title (or the user's Phase 2a question 5 answer). Package names in install commands, imports, and registry links match the manifest name exactly, even when it differs from the title (title `Climb Log`, `pip install climb_log`)
 - Version is current
 - License matches LICENSE file
 - Install command uses correct package name and works
