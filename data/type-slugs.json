@@ -66,7 +66,7 @@
     "template": "cli",
     "name": "TUI Application",
     "priority": 10,
-    "target_lines": [200, 1200],
+    "target_lines": [60, 500],
     "screenshot_priority": "MUST"
   },
   "docs-site": {
@@ -80,7 +80,7 @@
     "template": "web-app",
     "name": "Web Application",
     "priority": 12,
-    "target_lines": [100, 300],
+    "target_lines": [50, 300],
     "screenshot_priority": "MUST"
   },
   "api": {
@@ -94,14 +94,14 @@
     "template": "cli",
     "name": "CLI Tool",
     "priority": 14,
-    "target_lines": [200, 1200],
+    "target_lines": [60, 500],
     "screenshot_priority": "MUST"
   },
   "framework": {
     "template": "framework",
     "name": "Framework",
     "priority": 15,
-    "target_lines": [100, 300],
+    "target_lines": [60, 300],
     "screenshot_priority": "COULD"
   },
   "ml": {
@@ -122,14 +122,14 @@
     "template": "educational",
     "name": "Educational / Awesome",
     "priority": 18,
-    "target_lines": [500, 3000],
+    "target_lines": [500, null],
     "screenshot_priority": "COULD"
   },
   "library": {
     "template": "library",
     "name": "Library / Package",
     "priority": 19,
-    "target_lines": [50, 400],
+    "target_lines": [40, 400],
     "screenshot_priority": "COULD"
   },
   "other": {
