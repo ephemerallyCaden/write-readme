@@ -17,6 +17,7 @@ Checks:
 - No dead badge hosts or static shields that imitate live status
 - No positional image references ("screenshot above")
 - License text agrees with the LICENSE file in --dir
+- A linked Code of Conduct has its reporting contact filled in
 - No style= attributes on HTML tags (GitHub strips them)
 
 Prints findings to stdout, then any notes. Exit 0 if all pass, 1 if issues
@@ -30,6 +31,7 @@ import json
 import os
 import re
 import sys
+from collections.abc import Iterator
 from urllib.parse import parse_qs, unquote, urlparse
 
 from _mdlib import (
@@ -254,6 +256,16 @@ def is_expected(path: str, expected: list[str]) -> bool:
     return any(path == e or path.startswith(e.rstrip(os.sep) + os.sep) for e in expected)
 
 
+def iter_relative_targets(lines: list[Line], base_dir: str) -> Iterator[tuple[Line, str, str]]:
+    """(line, target, resolved path) for each repo-relative link or image target."""
+    for line in lines:
+        for target in iter_link_targets(line):
+            parsed = urlparse(target)
+            if parsed.scheme or parsed.netloc or not parsed.path:
+                continue  # URLs, mailto:, and in-page anchors
+            yield line, target, resolve_repo_path(base_dir, unquote(parsed.path))
+
+
 def check_relative_links(lines: list[Line], base_dir: str, expect: list[str] | None = None) -> list[str]:
     """Check that relative link and image targets point to existing files.
 
@@ -261,16 +273,11 @@ def check_relative_links(lines: list[Line], base_dir: str, expect: list[str] | N
     caller will write later, such as captures copied in at publish time.
     """
     expected = [resolve_repo_path(base_dir, p) for p in expect or []]
-    findings: list[str] = []
-    for line in lines:
-        for target in iter_link_targets(line):
-            parsed = urlparse(target)
-            if parsed.scheme or parsed.netloc or not parsed.path:
-                continue  # URLs, mailto:, and in-page anchors
-            path = resolve_repo_path(base_dir, unquote(parsed.path))
-            if not os.path.exists(path) and not is_expected(path, expected):
-                findings.append(f"  L{line.lineno}: broken link {target} — file not found")
-    return findings
+    return [
+        f"  L{line.lineno}: broken link {target} — file not found"
+        for line, target, path in iter_relative_targets(lines, base_dir)
+        if not os.path.exists(path) and not is_expected(path, expected)
+    ]
 
 
 def check_badge_urls(lines: list[Line]) -> list[str]:
@@ -785,6 +792,32 @@ def check_license(lines: list[Line], headings: list[Heading], base_dir: str) -> 
     return findings
 
 
+# --- Code of Conduct -------------------------------------------------------
+
+CONDUCT_NAME_RE = re.compile(r"^CODE[_-]OF[_-]CONDUCT", re.IGNORECASE)
+# The Contributor Covenant's unfilled contact field.
+CONDUCT_PLACEHOLDER = "[INSERT CONTACT METHOD]"
+
+
+def check_conduct_contact(lines: list[Line], base_dir: str) -> list[str]:
+    """A linked Code of Conduct that still has the template's contact placeholder."""
+    findings: list[str] = []
+    seen: set[str] = set()
+    for line, target, path in iter_relative_targets(lines, base_dir):
+        if path in seen or not CONDUCT_NAME_RE.match(os.path.basename(path)) or not os.path.isfile(path):
+            continue
+        seen.add(path)
+        try:
+            with open(path, encoding="utf-8", errors="replace") as f:
+                unfilled = CONDUCT_PLACEHOLDER in f.read()
+        except OSError:
+            continue
+        if unfilled:
+            findings.append(f"  L{line.lineno}: {target} still says {CONDUCT_PLACEHOLDER}: "
+                            "no way to report a violation")
+    return findings
+
+
 # --- Main ------------------------------------------------------------------
 
 def run_checks(
@@ -807,6 +840,7 @@ def run_checks(
         ("Positional image references", check_positional_refs(lines)),
         ("HTML style attributes", check_style_attrs(lines)),
         ("License mismatch", check_license(lines, headings, base_dir)),
+        ("Unfilled Code of Conduct contact", check_conduct_contact(lines, base_dir)),
         ("Run-first", run_issues),
         ("Length issues", length_issues),
         ("Structure issues", check_structure(lines, headings)),

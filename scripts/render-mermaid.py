@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Render a Mermaid diagram to PNG using Playwright.
 
-Creates an HTML page with the Mermaid JS CDN, renders the diagram in headless
-Chromium, and captures a screenshot of the rendered SVG. Supports dark theme.
+Creates an HTML page that loads a pinned Mermaid build from jsDelivr with a
+Subresource Integrity hash, renders the diagram in headless Chromium, and
+captures a screenshot of the rendered SVG. Supports dark theme.
 """
 from __future__ import annotations
 
@@ -12,7 +13,12 @@ import os
 import sys
 
 
-MERMAID_CDN = "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"
+# Pinned build and its SRI hash. To upgrade, download the new file and run
+#   openssl dgst -sha384 -binary mermaid.min.js | openssl base64 -A
+MERMAID_SCRIPT = {
+    "src": "https://cdn.jsdelivr.net/npm/mermaid@12.2.0/dist/mermaid.min.js",
+    "integrity": "sha384-8xUhuLNMjW/cI2Dacg3DR4WliYznvIg0LVG1stctThKD/YVrJFI9TNCFxft5NYgp",
+}
 
 
 def build_mermaid_html(mermaid_source: str, dark: bool) -> str:
@@ -47,12 +53,12 @@ def build_mermaid_html(mermaid_source: str, dark: bool) -> str:
 <pre class="mermaid">
 {escaped}
 </pre>
-<script src="{MERMAID_CDN}"></script>
+<script src="{MERMAID_SCRIPT['src']}" integrity="{MERMAID_SCRIPT['integrity']}" crossorigin="anonymous"></script>
 <script>
   mermaid.initialize({{
     startOnLoad: true,
     theme: '{theme}',
-    securityLevel: 'loose',
+    securityLevel: 'strict',
     flowchart: {{ htmlLabels: true, curve: 'basis' }},
     themeVariables: {{
       darkMode: {'true' if dark else 'false'},
@@ -94,11 +100,14 @@ def render_mermaid(
         try:
             page.wait_for_selector(".mermaid svg", timeout=10000)
         except Exception:
-            print(
-                "Error: Mermaid failed to render the diagram. "
-                "Check the syntax of your Mermaid source.",
-                file=sys.stderr,
-            )
+            if page.evaluate("typeof mermaid === 'undefined'"):
+                reason = (
+                    f"could not load {MERMAID_SCRIPT['src']} "
+                    "(offline, blocked, or the file no longer matches its integrity hash)"
+                )
+            else:
+                reason = "check the syntax of your Mermaid source"
+            print(f"Error: Mermaid failed to render the diagram: {reason}.", file=sys.stderr)
             browser.close()
             sys.exit(1)
 

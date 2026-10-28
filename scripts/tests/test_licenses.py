@@ -1,4 +1,4 @@
-"""The license texts in references/licenses/ that Phase 6 copies into a project.
+"""The license and Code of Conduct texts that Phase 6 copies into a project.
 
 Run: python3 -m unittest discover -s scripts/tests -v
 """
@@ -13,6 +13,10 @@ from _load import REPO, load_script
 vr = load_script("validate-readme.py")
 
 LICENSES = os.path.join(REPO, "references", "licenses")
+CONDUCT = os.path.join(REPO, "references", "community", "CODE_OF_CONDUCT-2.1.md")
+# SHA-256 of contributor-covenant.org/version/2/1/code_of_conduct/code_of_conduct.md,
+# byte for byte (it starts with a blank line).
+CONDUCT_SHA256 = "977d781349351fd7c1f076e4c7dc7de2a05b40e12c773542c3815dd4ce7f37ba"
 
 # SHA-256 of the canonical texts: gnu.org/licenses/gpl-3.0.txt and
 # apache.org/licenses/LICENSE-2.0.txt. MIT has no single canonical file;
@@ -43,6 +47,20 @@ class LicenseTextTests(unittest.TestCase):
         for name, family in expected.items():
             with self.subTest(name=name):
                 self.assertEqual(vr.identify_license(read(name)), family)
+
+
+class ConductTextTests(unittest.TestCase):
+    def setUp(self):
+        with open(CONDUCT, "rb") as f:
+            self.data = f.read()
+
+    def test_canonical_text_is_unmodified(self):
+        self.assertEqual(hashlib.sha256(self.data).hexdigest(), CONDUCT_SHA256)
+
+    def test_contact_placeholder_appears_once(self):
+        text = self.data.decode("utf-8")
+        self.assertEqual(text.count(vr.CONDUCT_PLACEHOLDER), 1)
+        self.assertIn(f"enforcement at {vr.CONDUCT_PLACEHOLDER}.", text)
 
 
 if __name__ == "__main__":

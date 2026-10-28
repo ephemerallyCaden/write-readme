@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """Capture terminal output as a styled PNG screenshot.
 
-Runs a command, captures stdout with ANSI colors, converts to styled HTML
-using Dracula theme colors, wraps in terminal window chrome, and uses
-Playwright to render and screenshot the result.
+Runs a command without a shell, captures stdout with ANSI colors, converts to
+styled HTML using Dracula theme colors, wraps in terminal window chrome, and
+uses Playwright to render and screenshot the result.
+
+The command is an argument list: either everything after `--`, or a
+`--command` string split with shlex. Shell syntax (pipes, redirects, `;`,
+`&&`, backticks, `$(...)`, variables, globs) is rejected rather than handed to
+a shell.
 """
 from __future__ import annotations
 
@@ -11,8 +16,105 @@ import argparse
 import html
 import os
 import re
+import shlex
 import subprocess
 import sys
+
+DEFAULT_TIMEOUT = 30.0
+
+# Characters a shell treats as syntax when they appear outside quotes.
+_UNQUOTED_SYNTAX = {
+    "|": "a pipe",
+    "&": "'&' or '&&'",
+    ";": "';'",
+    "<": "a redirect",
+    ">": "a redirect",
+    "(": "a subshell",
+    ")": "a subshell",
+    "*": "a glob",
+    "?": "a glob",
+    "\n": "a newline",
+}
+
+
+class CommandError(ValueError):
+    """The command can't be run as a plain argument list."""
+
+
+def find_shell_syntax(command: str) -> str | None:
+    """Describe the first shell construct in `command`, or None if there is none.
+
+    Single quotes make everything literal. Double quotes keep `|`, `;`, `>`
+    and the like literal, but a shell still expands backticks and `$` inside
+    them, so those are reported wherever they appear outside single quotes.
+    """
+    quote = None
+    i = 0
+    while i < len(command):
+        c = command[i]
+        if quote == "'":
+            if c == "'":
+                quote = None
+        elif c == "\\":
+            i += 1  # the next character is escaped
+        elif c == "`":
+            return "backticks (command substitution)"
+        elif c == "$" and (m := re.match(r"\$([({A-Za-z_])", command[i:])):
+            return "'$(' (command substitution)" if m.group(1) == "(" else "a '$' variable or expansion"
+        elif quote == '"':
+            if c == '"':
+                quote = None
+        elif c in "'\"":
+            quote = c
+        elif c in _UNQUOTED_SYNTAX:
+            return _UNQUOTED_SYNTAX[c]
+        i += 1
+    return None
+
+
+def parse_command(command: str) -> list[str]:
+    """Split a command string into argv, refusing anything that needs a shell."""
+    found = find_shell_syntax(command)
+    if found:
+        raise CommandError(
+            f"the command uses {found}, which needs a shell; capture-terminal.py runs "
+            "commands without one. Capture a single command, or pass its arguments "
+            "after '--'."
+        )
+    try:
+        argv = shlex.split(command)
+    except ValueError as e:
+        raise CommandError(f"could not parse the command: {e}") from e
+    if not argv:
+        raise CommandError("the command is empty")
+    return argv
+
+
+def run_command(argv: list[str], cwd: str, timeout: float = DEFAULT_TIMEOUT) -> str:
+    """Run argv in cwd with no shell and no stdin; return stdout and stderr."""
+    env = os.environ.copy()
+    env["TERM"] = "xterm-256color"
+    # Force color output for common tools
+    env["FORCE_COLOR"] = "1"
+    env["CLICOLOR_FORCE"] = "1"
+    shown = shlex.join(argv)
+    try:
+        result = subprocess.run(
+            argv,
+            cwd=cwd,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=env,
+        )
+    except subprocess.TimeoutExpired as e:
+        raise CommandError(f"command timed out after {timeout:g}s: {shown}") from e
+    except OSError as e:
+        raise CommandError(f"could not run {shown}: {e}") from e
+    if result.stderr and result.stdout:
+        return result.stdout + "\n" + result.stderr
+    return result.stdout or result.stderr
 
 
 # Dracula theme ANSI color map
@@ -148,9 +250,11 @@ def build_terminal_html(content_html: str, title: str = "Terminal") -> str:
 
 
 def capture_terminal(
-    command: str,
+    argv: list[str],
     output: str,
     title: str | None = None,
+    cwd: str = ".",
+    timeout: float = DEFAULT_TIMEOUT,
 ) -> None:
     try:
         from playwright.sync_api import sync_playwright
@@ -162,43 +266,20 @@ def capture_terminal(
         )
         sys.exit(1)
 
-    # Run the command and capture output
-    env = os.environ.copy()
-    env["TERM"] = "xterm-256color"
-    # Force color output for common tools
-    env["FORCE_COLOR"] = "1"
-    env["CLICOLOR_FORCE"] = "1"
-
     try:
-        result = subprocess.run(
-            command,
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            env=env,
-        )
-        cmd_output = result.stdout
-        if result.stderr and not result.stdout:
-            cmd_output = result.stderr
-        elif result.stderr:
-            cmd_output = result.stdout + "\n" + result.stderr
-    except subprocess.TimeoutExpired:
-        print(f"Error: command timed out after 30s: {command}", file=sys.stderr)
-        sys.exit(1)
-    except Exception as e:
-        print(f"Error running command: {e}", file=sys.stderr)
+        cmd_output = run_command(argv, cwd=cwd, timeout=timeout)
+    except CommandError as e:
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
     if not cmd_output.strip():
         print("Warning: command produced no output", file=sys.stderr)
-        cmd_output = f"$ {command}\n(no output)"
+        cmd_output = "(no output)"
 
     # Prepend the command prompt
-    display = f"$ {command}\n{cmd_output.rstrip()}"
+    display = f"$ {shlex.join(argv)}\n{cmd_output.rstrip()}"
     content_html = ansi_to_html(display)
-    term_title = title or command.split()[0] if command else "Terminal"
-    full_html = build_terminal_html(content_html, title=term_title)
+    full_html = build_terminal_html(content_html, title=title or os.path.basename(argv[0]))
 
     # Render with Playwright
     os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
@@ -218,19 +299,44 @@ def capture_terminal(
         browser.close()
 
 
-def main() -> None:
+def main(args_list: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        description="Capture terminal command output as a styled PNG screenshot."
+        description="Capture terminal command output as a styled PNG screenshot.",
+        epilog="Example: capture-terminal.py --dir . -o help.png -- mytool --help",
     )
-    parser.add_argument("--command", "-c", required=True, help="Command to run and capture")
+    parser.add_argument(
+        "--command", "-c", default=None,
+        help="Command string, split like a shell would but run without one; "
+             "pipes, redirects, ';', '&&', backticks and '$(' are rejected",
+    )
     parser.add_argument("--output", "-o", default="terminal.png", help="Output PNG path (default: terminal.png)")
     parser.add_argument("--title", default=None, help="Window title (default: command name)")
-    args = parser.parse_args()
+    parser.add_argument("--dir", default=".", help="Directory to run the command in, the project root (default: .)")
+    parser.add_argument(
+        "--timeout", type=float, default=DEFAULT_TIMEOUT,
+        help=f"Seconds before the command is stopped (default: {DEFAULT_TIMEOUT:g})",
+    )
+    parser.add_argument("argv", nargs="*", help="The command and its arguments, after '--'")
+    args = parser.parse_args(args_list)
+
+    if bool(args.command) == bool(args.argv):
+        parser.error("give the command either with --command or after '--', not both")
+    if not os.path.isdir(args.dir):
+        parser.error(f"--dir is not a directory: {args.dir}")
+    if args.argv:
+        argv = args.argv
+    else:
+        try:
+            argv = parse_command(args.command)
+        except CommandError as e:
+            parser.error(str(e))
 
     capture_terminal(
-        command=args.command,
+        argv=argv,
         output=args.output,
         title=args.title,
+        cwd=args.dir,
+        timeout=args.timeout,
     )
 
 

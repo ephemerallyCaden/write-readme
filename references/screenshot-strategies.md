@@ -2,6 +2,8 @@
 
 > Complete reference for what to capture, how to capture it, and what to avoid for each project type. Backs up the screenshot placeholders embedded in README templates.
 
+A capture that runs the project's own code (a dev server, the CLI, a game) runs only after the user confirms that exact command: see Project commands in `skills/screenshot/SKILL.md`.
+
 ---
 
 ## Money Shot Matrix
