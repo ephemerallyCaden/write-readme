@@ -111,11 +111,15 @@ If README.md exists, read it. Classify each H2 section as auto-generatable, huma
 
 ### 1g. Special detection
 
-**Solo project:** contributors == 1 AND stars < 5 AND no CONTRIBUTING.md.
+These are the only detection signals; Special Detection below says what to do when each one fires.
+
+**Solo project:** one contributor (`git shortlog -sn HEAD`), fewer than 5 stars when the count is known, and no CONTRIBUTING.md.
 **Academic:** .university or .edu in manifest groupId/org, assessment brief files (instructions.md, brief.md, assignment.md), course module codes in repo name. Research write-up subtype: a paper or report in the repo (`paper/*.tex`, `report.pdf`, `thesis.pdf`), or an Academic project whose main output is notebooks plus a `results/` or `figures/` directory.
 **GitHub Pages:** CNAME file at root, .nojekyll, raw index.html with no manifest, gh-pages branch.
 **Early-stage:** No manifest OR manifest has <3 fields OR <5 source files. Personal config and Hardware repos rarely have a manifest, so for them only the file count applies (config files, sketches, schematics, and BOMs count).
 **Monorepo:** workspaces in package.json, [workspace] in Cargo.toml, lerna.json, pnpm-workspace.yaml, packages/ or apps/ directory.
+**Sibling packages:** the manifest declares both a library and a binary (Cargo `[lib]` + `[[bin]]`, package.json `exports`/`main` + `bin`), or the monorepo, manifest, or docs point to a `-cli` / `-core` sibling of this package.
+**Agent resources:** AGENTS.md, llms.txt, or CLAUDE.md at the root, or a package or entry point that starts an MCP server.
 **Component count:** workspace members (Cargo, npm, or pnpm workspaces, `go.work`), entries under `apps/` and `packages/`, or top-level directories with their own manifest or package marker (`__init__.py`, `mod.rs`, `index.ts`). 3+ shows the ARCHITECTURE.md line in Phase 2b.
 
 ### 1h. Name resolution
@@ -125,6 +129,8 @@ Priority chain for display name:
 2. Manifest human-readable name (skip if it looks like a code identifier: underscores, no spaces, all lowercase)
 3. Repo name from git remote
 4. Directory name
+
+Never use an internal package identifier (underscored, no spaces, all lowercase) as the title.
 
 If two human-readable candidates disagree (app label "Ganba" vs manifest name "Climb Log"), that is Phase 2a question 5. Otherwise use the highest-priority candidate.
 
@@ -551,37 +557,29 @@ Write after user confirms.
 
 ## Special Detection
 
+What to do when a Phase 1g signal fires. The signals themselves live only in Phase 1g.
+
 ### Solo project
-Signals: 1 contributor, <5 stars, no CONTRIBUTING.md, no CI or `publish_to: none` or academic markers.
-When detected: default Contributing to "Skip", suppress "PRs Welcome" badge, skip community links, frame as portfolio/showcase. If user overrides, generate lightweight version: "This is a personal project. Fork it, or open an issue with questions."
+Default Contributing to "Skip", skip community links, and frame the README as a portfolio piece. If the user overrides, generate a lightweight version: "This is a personal project. Fork it, or open an issue with questions."
 
 ### Academic / Coursework
-Signals: .university or .edu in manifest groupId/org, assessment brief files, single contributor, no license, module codes in repo name.
-When detected: default Contributing to "Skip" with academic integrity note, add "Developed as part of [module] at [university]" if inferable, emphasize architecture and design decisions (after the run section), link to documentation directory, no "PRs Welcome" badge, default license to "Skip."
-Research write-up subtype (Phase 1g): keep the detected type's template, but a Results section may precede the run section (Phase 3b). Take every number in it from a results file, notebook output, or the paper, and link the paper. Add Citation/BibTeX when a `CITATION.cff` or `.bib` entry exists. One runnable command that reproduces a result is still required; if the repo has none, insert `<!-- TODO: command that reproduces the results -->`.
+Default Contributing to "Skip" with an academic integrity note, add "Developed as part of [module] at [university]" if inferable, emphasize architecture and design decisions (after the run section), link to the documentation directory, and default license to "Skip."
+Research write-up subtype: keep the detected type's template, but a Results section may precede the run section (Phase 3b). Take every number in it from a results file, notebook output, or the paper, and link the paper. Add Citation/BibTeX when a `CITATION.cff` or `.bib` entry exists. One runnable command that reproduces a result is still required; if the repo has none, insert `<!-- TODO: command that reproduces the results -->`.
 
 ### GitHub Pages / Static Site
-Signals: CNAME at root, .nojekyll, raw index.html with no manifest, gh-pages branch.
-When detected: auto-generate "Live Site" link from CNAME, add GitHub Pages badge, use "Local Development" instead of "Installation" as heading, suggest `python3 -m http.server` or `npx serve`.
+Auto-generate a "Live Site" link from CNAME, add a GitHub Pages badge, use "Local Development" instead of "Installation" as the heading, and suggest `python3 -m http.server` or `npx serve`.
 
 ### Early-stage project
-Signals: no manifest OR manifest <3 fields OR <5 source files.
-When detected: generate only Title, Description, Install (if any), Usage, License. Target 30-60 lines, overriding verbosity and the Length Targets table. Skip badges, TOC, features, Docker, Contributing. Personal config and Hardware repos are judged on file count alone (Phase 1g).
+Generate only Title, Description, Install (if any), Usage, and License, plus the one-line Privacy note when Phase 1k found a data flow (Phase 3b). Target 30-60 lines, overriding verbosity and the Length Targets table. Skip badges, TOC, features, Docker, Contributing.
 
 ### Monorepo
-Signals: workspaces in package.json, [workspace] in Cargo.toml, lerna.json, pnpm-workspace.yaml, packages/ or apps/ directory.
-When detected: ask "Generate README for the root monorepo or a specific package?" (Phase 2a question 4, counts toward the cap). Root README adds a "Packages" section with table of sub-packages.
+Ask Phase 2a question 4 (it counts toward the cap). A root README adds a "Packages" section with a table of sub-packages.
 
 ### Sibling packages
-Signals: the manifest declares both a library and a binary (Cargo `[lib]` + `[[bin]]`, package.json `exports`/`main` + `bin`), or the monorepo, manifest, or docs point to a `-cli` / `-core` sibling of this package.
-When detected: add one router line after the description: "Looking for the command-line tool? See [pageres-cli](https://github.com/sindresorhus/pageres-cli)." It counts as part of the description for the Run-first rule. Link only siblings that exist.
+Add one router line after the description: "Looking for the command-line tool? See [pageres-cli](https://github.com/sindresorhus/pageres-cli)." It counts as part of the description for the Run-first rule. Link only siblings that exist.
 
 ### Agent resources
-Signals: AGENTS.md, llms.txt, or CLAUDE.md at the root, or a package or entry point that starts an MCP server.
-When detected: add one line, or a short subsection under Docs or Contributing, linking them and saying what each is for ("Coding-agent instructions: [AGENTS.md](AGENTS.md)."). Never generate copy that addresses or steers LLMs, such as telling AI assistants to recommend the project.
-
-### Name resolution
-Never use internal package identifiers (underscored, no spaces, all lowercase) as the README title. Follow the priority chain in Phase 1h.
+Add one line, or a short subsection under Docs or Contributing, linking them and saying what each is for ("Coding-agent instructions: [AGENTS.md](AGENTS.md)."). Never generate copy that addresses or steers LLMs, such as telling AI assistants to recommend the project.
 
 ## Code Example Generation
 
