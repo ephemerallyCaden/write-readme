@@ -39,7 +39,7 @@ npx skills add ephemerallyCaden/write-readme -g -y
 /readme architecture     # write an ARCHITECTURE.md for contributors
 ```
 
-It asks at most three questions, shows you the full draft, and writes `README.md`, and any screenshots it captured, only after you approve. If a README already exists, it can enhance it and keep the sections you wrote by hand.
+It asks at most three questions, shows you the full draft, and writes `README.md`, and any screenshots it captured, only after you approve. A LICENSE, CODE_OF_CONDUCT.md or CONTRIBUTING.md is written only if you pick one in its options, and existing files are never overwritten. If a README already exists, it can enhance it and keep the sections you wrote by hand.
 
 ## What it prioritises
 
@@ -72,6 +72,10 @@ The comparison at the top is [TinySim](https://github.com/ephemerallyCaden/TinyS
 ## Code of Conduct
 
 This project follows the [Contributor Covenant 2.1](CODE_OF_CONDUCT.md).
+
+## Security
+
+Report vulnerabilities privately through the [Security tab](https://github.com/ephemerallyCaden/write-readme/security/advisories/new). See [SECURITY.md](SECURITY.md) for scope.
 
 ## License
 
