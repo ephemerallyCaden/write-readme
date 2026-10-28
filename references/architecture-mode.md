@@ -6,10 +6,9 @@ Section names in this file ("Phase 1: ANALYZE", "Run-first rule", "Anti-AI Writi
 
 ## When to run
 
-- Generate mode: only when the user chose "Also write ARCHITECTURE.md" in the Phase 2b optional choices block. That line has a default (Skip), so it never counts toward the 3-question cap, and it is never asked as a separate question.
-- Direct request (`/readme architecture`, "write an ARCHITECTURE.md"): run Phase 1, then this procedure. Ask no Phase 2 questions, except "Replace the existing ARCHITECTURE.md?" when one exists.
+- Generate mode: only when the user chose "Also write ARCHITECTURE.md" in the Phase 2b optional choices block, which says when that line is shown. It is never shown when `ARCHITECTURE.md` or `docs/architecture.md` exists; the README links the existing file instead.
+- Direct request (`/readme architecture`, "write an ARCHITECTURE.md"): run Phase 1, then this procedure. Ask no Phase 2 questions, except "Replace the existing ARCHITECTURE.md?" (or `docs/architecture.md`) when one exists.
 - Never in minimal verbosity or for an Early-stage project. If one of those applies to a direct request, say why and stop.
-- If `ARCHITECTURE.md` or `docs/architecture.md` already exists in generate mode, don't write a new one. Link the existing file from the README and stop.
 
 ## Step 1: Collect evidence
 

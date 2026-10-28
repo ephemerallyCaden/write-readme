@@ -159,7 +159,12 @@ find . -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.g
 ```
 This catches images anywhere: test/goldens/ (Flutter golden tests), docs/design/, assets/, or wherever else they exist. Also check existing README for external image references.
 
-Step 2 -- Look at each found image and decide if it belongs in a README. Not every image file is a screenshot. Read the image and judge:
+Step 2 -- Shortlist before reading any image:
+- Skip paths under `sprites/`, `textures/`, `icons/`, or `fonts/`, and names matching `favicon*`, `*icon*`, `*_diff*`, or `*-diff*`.
+- Skip raster images under 5 KB or under 200 px on either side (`file <image>` prints PNG, GIF, and JPEG dimensions). SVGs are judged by path and name only.
+- Rank what is left: images under `docs/`, `assets/`, `screenshots/`, or a golden-test directory (`goldens/`) first, then the rest, larger files first within each group. Read at most the top 20.
+
+Step 3 -- Look at each shortlisted image and decide if it belongs in a README. Not every image file is a screenshot. Read the image and judge:
 - **App screen / UI render** (dashboard, settings, feature view) → use it
 - **Diagram** (architecture, flowchart, pipeline) → use it
 - **Terminal output** (CLI help, command demo) → use it
@@ -222,13 +227,14 @@ Before I generate, a few quick choices (press Enter to skip any):
  Architecture:  [Also write ARCHITECTURE.md] [Skip]
                 Default: Skip
                 Only shown when detailed was requested or Phase 1g
-                counted 3+ components, and no ARCHITECTURE.md exists.
-                Ignored if Minimal is chosen above.
+                counted 3+ components, the project is not Early-stage,
+                and neither ARCHITECTURE.md nor docs/architecture.md
+                exists. Ignored if Minimal is chosen above.
 ```
 
 Unanswered choices use defaults. "Go", "just do it", or Enter accepts all defaults.
 
-The ARCHITECTURE.md offer lives only in this block. It has a default (Skip), so it never counts toward the 3-question cap and is never asked as a separate question. If the user picks Detailed here and the line wasn't shown, don't ask again; note in the Phase 5 summary that ARCHITECTURE.md is available on request.
+The ARCHITECTURE.md offer is never asked as a separate question. If the user picks Detailed here and the line wasn't shown, note in the Phase 5 summary that ARCHITECTURE.md is available on request (unless the project is Early-stage or one already exists).
 
 ### Verbosity levels
 
@@ -286,11 +292,11 @@ Exempt: Educational / Awesome lists, personal config / dotfiles repos (a browse 
 
 **Privacy.** Required when Phase 1k found an initialised telemetry, analytics, or error-reporting SDK, a `PrivacyInfo.xcprivacy`, or an outbound LLM provider key. Title it `## Privacy` (or "What is sent"), after Config and before Contributing; for Browser Extensions, fold it into Permissions/Privacy. Give one line per destination: what is sent (from the call sites: event names, captured fields, prompt contents and attached files), where (the vendor, plus the host if code configures one), and whether it is on by default. Opt-out: name only an env var, CLI flag, or config key the code reads, quoted exactly ("Set `DO_NOT_TRACK=1` to disable."). If none is found, write "No opt-out found in the code." rather than claiming none exists. For `PrivacyInfo.xcprivacy`, list its collected data types and tracking flag and link the file. In minimal, compress this to one line after the usage example.
 
-**Comparison.** Detailed mode only, and only from the existing README (human-authored, preserved under Enhance Mode), `docs/`, or text the user supplies. Never research or invent one, and never ask a Phase 2 question for it. Name each alternative and link it, link a source for every claim (a benchmark, the alternative's docs), and include at least one dimension where this project loses or doesn't apply. Never compare against unnamed "other tools" or "traditional approaches". No source: no section.
+**Comparison.** Generating one is detailed mode only, and only from the existing README, `docs/`, or text the user supplies. A human-written comparison in an existing README is preserved in every mode (Enhance Mode). Never research or invent one, and never ask a Phase 2 question for it. Name each alternative and link it, link a source for every claim (a benchmark, the alternative's docs), and include at least one dimension where this project loses or doesn't apply. Never compare against unnamed "other tools" or "traditional approaches". No source: no section.
 
 **Architecture section.** Draw only the components and edges Phase 1 found. Minimal: none. Standard: at most one Mermaid diagram, 2-4 sentences, and a link to ARCHITECTURE.md or an existing architecture doc when there is one. Detailed: the same cap when ARCHITECTURE.md is being written; otherwise the template's full Architecture section.
 
-**ARCHITECTURE.md.** Only when chosen in Phase 2b or asked for directly. Follow `references/architecture-mode.md` (relative to this skill's base directory) after the README draft passes Phase 4, and link the file from Contributing, or from Docs when there is no Contributing section.
+**ARCHITECTURE.md.** When chosen in Phase 2b, follow `references/architecture-mode.md` after the README draft passes Phase 4. That file says where the README links it.
 
 Before writing prose, read `references/anti-ai-rules.md` (relative to this skill's base directory), and apply the Anti-AI Writing Rules section below while writing, not only as a post-pass.
 
