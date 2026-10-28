@@ -77,7 +77,7 @@ Check every item. Verify claims against the codebase with Read, Glob, and Grep; 
 - Every MUST section for the type (Type-to-Template Mapping, plus the matrix in `category-templates.md`) is present. Missing MUST is P1. Respect Special Detection: no Contributing for solo or academic projects.
 - Missing SHOULD sections are P2, and only when the codebase supplies their content. Never propose padding to reach a Length Target; over-length fixes name the sections to cut or collapse.
 - One H1, no skipped heading levels, no duplicate or near-duplicate H2s.
-- TOC and navigation rule from Phase 3e: a TOC exists above 150 lines (Educational / Awesome always has a TOC or anchor nav block), and every TOC entry matches a heading.
+- TOC and navigation rule from Phase 3e: a TOC exists above 150 lines (Educational / Awesome always has a TOC or anchor nav block), and every TOC entry matches a heading. A TOC under its own H2 (`## Table of Contents`) is P2: the fix replaces that heading line with `**Contents**`. Don't also report it as a Run-first violation.
 - Every fenced code block names a language.
 - Privacy: when Phase 1k found an initialised telemetry, analytics, or error-reporting SDK, a `PrivacyInfo.xcprivacy`, or an outbound LLM provider key, and the README says nothing about what is sent, that is P1. The fix inserts the Privacy section per Phase 3b, built from the call sites; its opt-out line names only a key the code reads, else says "No opt-out found in the code."
 - Architecture section: in standard verbosity, anything beyond one diagram, 2-4 sentences, and a link is P2; the fix trims it to that cap and, when ARCHITECTURE.md exists, links it.

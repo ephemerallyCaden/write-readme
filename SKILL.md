@@ -260,7 +260,7 @@ Follow the template ordering, with one override:
 - No release, store, or hosted evidence (Desktop, Mobile, Browser Extension, Web App, API): build-from-source or self-host commands. Never invent a store link, download, or URL.
 - Build and flash the firmware (`pio run -t upload`, `arduino-cli upload`), with the parts list linked from the prerequisites line: Hardware. A board-only repo (no firmware) points to its fabrication outputs (gerbers, BOM, placement files) instead.
 
-Before it, allow only: title, badges, description (≤2 sentences, plus a router line if Special Detection calls for one), hero image, nav row, TOC. Features, Architecture, Model tables, Sponsors, and everything else go after it. Prerequisites go inside the run section as its first line ("Requires Flutter 3.12+."), never as their own section before or after it. Keep the first command, download table, store badge, or hosted URL within the first 80 lines (50 in minimal).
+Before it, allow only: title, badges, description (≤2 sentences, plus a router line if Special Detection calls for one), hero image, nav row, the `**Contents**` TOC (Phase 3e). Features, Architecture, Model tables, Sponsors, and everything else go after it. Prerequisites go inside the run section as its first line ("Requires Flutter 3.12+."), never as their own section before or after it. Keep the first command, download table, store badge, or hosted URL within the first 80 lines (50 in minimal).
 
 Library / Package: a code snippet of 10 lines or fewer may precede the install line inside the first H2.
 
@@ -319,7 +319,11 @@ Rendering hygiene:
 
 ### 3e. TOC and navigation
 
-Generate a TOC only if the README exceeds 150 lines. Format: flat list of H2 headings, GitHub anchor style (lowercase, hyphens, strip special chars). Insert after description/badges, before first content section. Include H3s only if >10 H2 headings. Below 150 lines, a nav row near the top (`Docs • Demo • Install`) can stand in for it.
+Generate a TOC only if the README exceeds 150 lines. It is not a heading: a bold `**Contents**` line followed by a flat list of H2 links in GitHub anchor style, so the first H2 is still the run section. Insert it after the description and badges, before the first H2. Include H3s only if there are more than 10 H2s. Build it from the draft rather than by hand:
+```bash
+python3 <skill-dir>/scripts/generate-toc.py /tmp/write-readme-draft/README.md
+```
+It prints the `**Contents**` block and adds H3s by itself past 10 H2s (`--no-h3` turns that off). Below 150 lines, a nav row near the top (`Docs • Demo • Install`) can stand in for it.
 
 Exception: Educational / Awesome lists always get navigation, whatever their length, because the content is the README. Use a TOC, or a nav block of anchor links grouped by what the reader wants to do.
 
@@ -519,13 +523,13 @@ When the user chooses "enhance" for an existing README:
 
 **Step 2: Classify each section.**
 
-- **Auto-generatable** (regenerate with fresh data): badge rows (lines that are all `![...](...)` links), TOC (bulleted list of anchor links), license one-liners, contributing boilerplate (<3 sentences, no project-specific detail).
+- **Auto-generatable** (regenerate with fresh data): badge rows (lines that are all `![...](...)` links), TOC (bulleted list of anchor links, with or without a `## Table of Contents` heading), license one-liners, contributing boilerplate (<3 sentences, no project-specific detail).
 - **Human-authored** (preserve verbatim): project-specific prose >3 sentences, personal voice or opinions, content not inferable from codebase (philosophy, roadmap, acknowledgments, comparison with alternatives), custom sections not in any template.
 - **Mixed** (preserve human content, supplement): features section with some human items -- keep them, add newly detected features below. Usage with human examples -- keep them, add auto-inferred examples only for different functionality.
 
 **Step 3: Add missing sections.** Check which MUST sections for the detected type are absent. Insert at canonical position. Match surrounding style. Apply the Run-first rule: if install/run instructions exist but sit below Features or other content, move that section (content preserved verbatim) to be the first H2 and report it as MOVED in Step 5. Exception: never move it above a human-written H2 about security, compatibility, requirements, how it works, or a threat model. Someone put that context first so readers see it before running anything. Move the run section up only as far as directly below the last such section (or leave it if it is already there) and report `RUN-FIRST: kept below [section], safety context`.
 
-**Step 4: Update auto-generatable sections.** Regenerate badges, TOC, license text from current data.
+**Step 4: Update auto-generatable sections.** Regenerate badges, TOC, license text from current data. The TOC becomes a `**Contents**` list (Phase 3e); drop any `## Table of Contents` heading.
 
 **Step 5: Present changes.**
 ```
