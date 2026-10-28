@@ -362,7 +362,7 @@ The Run-first rule in Phase 3b overrides those orderings: wherever the template 
 - Version is current
 - License matches LICENSE file
 - Install command uses correct package name and works
-- All file path references exist (Glob to verify)
+- All file path references exist (Glob to verify), or are captures and ARCHITECTURE.md that Phase 6 will write
 - Code examples reference real exports (Grep to verify)
 - Badge URLs are syntactically valid
 
@@ -378,16 +378,20 @@ The Run-first rule in Phase 3b overrides those orderings: wherever the template 
 | Go | Has main package? | Use `go run .` |
 
 ### Anti-AI check (mandatory)
-1. Self-review every prose sentence against the P0 + P1 checks and the 13 structural rules in the Anti-AI Writing Rules section below.
-2. Then run the scripted check. Write the draft to a temp file (e.g. `/tmp/write-readme-draft/README.md`, never the project root before approval) and run, with `<skill-dir>` being this skill's base directory:
+1. Self-review every prose sentence against the 13 structural rules in the Anti-AI Writing Rules section below and the P0/P1 checklist in `references/anti-ai-rules.md`.
+2. Then run the scripts. Write the draft to `/tmp/write-readme-draft/README.md` (never the project root before approval) and run:
    ```bash
    python3 <skill-dir>/scripts/check-anti-ai.py --file /tmp/write-readme-draft/README.md --severity P1   # gate: P0+P1
-   python3 <skill-dir>/scripts/check-anti-ai.py --file /tmp/write-readme-draft/README.md --severity P2   # adds P2 style findings
+   python3 <skill-dir>/scripts/check-anti-ai.py --file /tmp/write-readme-draft/README.md --severity P2   # adds P2 warnings
    python3 <skill-dir>/scripts/validate-readme.py /tmp/write-readme-draft/README.md --type <type_slug> --verbosity <level> --dir <project-root>
    ```
-   `--severity` is required: without it the checker reports P0 only.
-   `validate-readme.py` checks relative links and badge URLs, the first runnable step (past line 80 in standard and detailed, 50 in minimal; skipped for educational and dotfiles), dead in-page anchors, duplicate H2s, header badges (at most 6), dead badge hosts and static badges imitating live status, placeholders outside comments and code, positional image references ("screenshot above"), license text against the LICENSE file, `style=` attributes, and the Phase 3f length range. Its first output line always gives the first runnable step's line. `--verbosity` sets the run-first and length limits. `--dir` must be the project root, not the `/tmp` draft directory: links and the LICENSE comparison resolve against it.
-3. Fix every P0 and P1 finding and re-run until the `--severity P1` check exits 0. P2 findings and `validate-readme.py` issues: fix, or list them under "Warnings" in the Phase 5 summary with a reason. If `python3` is unavailable, note that in Warnings and rely on step 1.
+   The checker runs twice because its exit code counts everything at or above `--severity`: the P1 run's exit code is the gate, and the P2 run only lists warnings. Without `--severity` it reports P0 only.
+   `validate-readme.py` checks relative links and badge URLs, the first runnable step (past line 80 in standard and detailed, 50 in minimal; skipped for educational and dotfiles), dead in-page anchors, duplicate H2s, header badges (at most 6), dead badge hosts and static badges imitating live status, placeholders outside comments and code, positional image references ("screenshot above"), license text against the LICENSE file, `style=` attributes, and the Phase 3f length range. Its first output line always gives the first runnable step's line. Flags:
+   - `--type` takes a canonical type slug and rejects anything else. `--verbosity` sets the run-first and length limits; add `--early-stage` when Phase 1g flagged an Early-stage project, for the 30-60 range.
+   - `--dir` must be the project root, not the `/tmp` draft directory: links and the LICENSE comparison resolve against it.
+   - `--expect PATH` (repeatable) names a file Phase 6 will create, so a link to it isn't reported broken. Pass `--expect ARCHITECTURE.md` when the companion file is being generated, and `--expect assets/screenshots/<file>` for each captured image the draft references.
+   - Length: over the maximum is an issue. Under the minimum prints a note and leaves the exit code alone; it needs no fix, because padding is worse (Phase 3f).
+3. Fix every P0 and P1 finding and re-run until the `--severity P1` check exits 0. The one exception is a finding on a documented rule exception: an emoji next to a brand or mascot name (rule 1), or a banned word inside a real name or identifier the README must quote (a package, product, or file name). Leave that text as it is and list it under "Warnings" in the Phase 5 summary with its reason; the gate is met when only such findings remain. P2 findings and `validate-readme.py` issues: fix, or list them under Warnings with a reason. If `python3` is unavailable, note that in Warnings and rely on step 1.
 
 ### Completeness
 - Run-first rule holds: the first H2 is the run section for this type, prerequisites sit inside it (Phase 3b)
@@ -403,7 +407,7 @@ The Run-first rule in Phase 3b overrides those orderings: wherever the template 
 - Code blocks specify language
 - Header badge count 0-6, no static badge imitating live status
 - No `style=` attributes; image URLs are absolute when the README is published to a registry
-- Length within the Phase 3f range
+- Length at or under the Phase 3f maximum
 
 ## Phase 5: REVIEW
 
