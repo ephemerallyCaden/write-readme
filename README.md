@@ -18,7 +18,7 @@ write-readme is a README generator for Claude Code, packaged as an agent skill. 
 
 <p align="center">
   <a href="examples/tinysim/">
-    <img src="assets/readme-before-after.png" alt="Two READMEs for the same Unity project side by side: the left opens with long bold-labelled feature lists; the right opens with a gameplay GIF, a clone command and steps." width="900">
+    <img src="assets/readme-before-after.gif" alt="Two READMEs for the same Unity project side by side: the left opens with long bold-labelled feature lists; the right opens with the gameplay GIF playing, then a clone command and steps." width="900">
   </a>
 </p>
 
